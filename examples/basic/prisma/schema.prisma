@@ -1,0 +1,50 @@
+// Example schema for the prisma-effect-schema-generator.
+//
+// Wire up the generator with `provider = "node ./node_modules/prisma-effect-schema-generator/dist/index.js"`.
+//
+// Override the output location with the `output` field, and tweak the
+// scalar mappings (bigIntAs, decimalAs, dateAs) as needed.
+
+generator effect_client {
+  provider = "node ../node_modules/prisma-effect-schema-generator/dist/index.js"
+  output   = "../generated/effect-schemas/index.ts"
+
+  // Defaults shown for clarity -- comment these out to use package defaults.
+  bigIntAs            = "BigIntFromSelf"
+  decimalAs           = "String"
+  dateAs              = "DateFromSelf"
+  exportModelNames    = "true"
+  exportModelNameType = "true"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  ADMIN
+  USER
+  GUEST
+}
+
+model User {
+  id        String   @id
+  email     String   @unique
+  name      String?
+  age       Int?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+
+  posts Post[]
+}
+
+model Post {
+  id          String   @id
+  title       String
+  body        String?
+  authorId    String
+  publishedAt DateTime?
+  metadata    Json?
+
+  author User @relation(fields: [authorId], references: [id])
+}
