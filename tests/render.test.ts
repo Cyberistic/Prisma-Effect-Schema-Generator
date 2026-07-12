@@ -443,4 +443,203 @@ describe("renderModule", () => {
       expect(out).toContain("export const PostSchema = Schema.standardSchemaV1(Schema.Struct({");
     });
   });
+
+  describe("idColumn", () => {
+    it("emits PRIMARY_KEY_COLUMNS", () => {
+      const todo = model("Todo", [
+        field("id", "String", { isId: true }),
+        field("text", "String"),
+      ]);
+      const event = model("Event", [
+        field("id", "Int", { isId: true }),
+        field("name", "String"),
+      ]);
+      const out = renderModule(datamodel([todo, event]), options({ idColumn: true }));
+      expect(out).toContain("export const PRIMARY_KEY_COLUMNS = {");
+      expect(out).toContain("  Todo: \"id\",");
+      expect(out).toContain("  Event: \"id\",");
+      expect(out).toContain("as const satisfies Record<ModelName, string | null>");
+    });
+
+    it("uses null for models with no detectable primary key", () => {
+      const m = model("X", [field("name", "String")]);
+      const out = renderModule(datamodel([m]), options({ idColumn: true }));
+      expect(out).toContain("  X: null,");
+      expect(out).toContain("Record<ModelName, string | null>");
+    });
+
+    it("falls back to a unique String field", () => {
+      const m = model("X", [
+        field("email", "String", { isUnique: true }),
+        field("name", "String"),
+      ]);
+      const out = renderModule(datamodel([m]), options({ idColumn: true }));
+      expect(out).toContain("  X: \"email\",");
+    });
+  });
+
+  describe("softDeleteColumn", () => {
+    it("emits SOFT_DELETE_COLUMNS with detected columns", () => {
+      const todo = model("Todo", [
+        field("id", "String", { isId: true }),
+        field("deletedAt", "DateTime", { isRequired: false }),
+      ]);
+      const event = model("Event", [
+        field("id", "String", { isId: true }),
+        field("name", "String"),
+      ]);
+      const out = renderModule(
+        datamodel([todo, event]),
+        options({ softDeleteColumn: true }),
+      );
+      expect(out).toContain("export const SOFT_DELETE_COLUMNS = {");
+      expect(out).toContain("  Todo: \"deletedAt\",");
+      expect(out).not.toContain("  Event:");
+      expect(out).toContain("as const satisfies Partial<Record<ModelName, string>>");
+    });
+
+    it("emits an empty object when no soft-delete columns exist", () => {
+      const m = model("X", [field("id", "String", { isId: true }), field("name", "String")]);
+      const out = renderModule(datamodel([m]), options({ softDeleteColumn: true }));
+      expect(out).toContain(
+        'export const SOFT_DELETE_COLUMNS = {} as const satisfies Partial<Record<ModelName, string>>',
+      );
+    });
+  });
+
+  describe("tables", () => {
+    it("emits TableDescriptor interface and TABLES map", () => {
+      const todo = model("Todo", [
+        field("id", "String", { isId: true }),
+        field("text", "String"),
+        field("completed", "Boolean"),
+        field("deletedAt", "DateTime", { isRequired: false }),
+      ]);
+      const out = renderModule(datamodel([todo]), options({ tables: true }));
+      expect(out).toContain("export interface ColumnDescriptor {");
+      expect(out).toContain("export interface TableDescriptor {");
+      expect(out).toContain("export const TABLES: { [M in ModelName]: TableDescriptor } = {");
+      expect(out).toContain("Todo: {");
+      expect(out).toContain("name: \"Todo\"");
+      expect(out).toContain("primaryKey: \"id\"");
+      expect(out).toContain("softDelete: \"deletedAt\"");
+      expect(out).toContain("includedInSync: true");
+      expect(out).toContain("columns: [");
+      expect(out).toContain("{ name: \"id\"; type: 'string'; required: true; list: false; unique: true; isEnum: false }");
+      expect(out).toContain("{ name: \"text\"; type: 'string'; required: true; list: false; unique: false; isEnum: false }");
+      expect(out).toContain("{ name: \"completed\"; type: 'boolean'; required: true; list: false; unique: false; isEnum: false }");
+      expect(out).toContain("{ name: \"deletedAt\"; type: 'date'; required: false; list: false; unique: false; isEnum: false }");
+    });
+
+    it("uses dbName for the table name", () => {
+      const todo = model("Todo", [field("id", "String", { isId: true })], {
+        dbName: "todos",
+      });
+      const out = renderModule(datamodel([todo]), options({ tables: true }));
+      expect(out).toContain("name: \"todos\"");
+    });
+
+    it("includes enum values in the column descriptor", () => {
+      const user = model("User", [
+        field("id", "String", { isId: true }),
+        enumField("role", "Role"),
+      ]);
+      const d = datamodel([user], [{ name: "Role", values: enumValues("ADMIN", "USER") }]);
+      const out = renderModule(d, options({ tables: true }));
+      expect(out).toContain(
+        "{ name: \"role\"; type: 'string'; required: true; list: false; unique: false; isEnum: true; enumValues: [\"ADMIN\",\"USER\"] as const }",
+      );
+    });
+
+    it("emits an empty columns array for models with no include fields", () => {
+      const m = model("Empty", []);
+      const out = renderModule(datamodel([m]), options({ tables: true }));
+      expect(out).toContain("columns: []");
+    });
+  });
+
+  describe("relationColumns", () => {
+    it("emits a relation schema for explicit foreign keys", () => {
+      const post = model("Post", [
+        field("id", "String", { isId: true }),
+        field("title", "String"),
+        field("authorId", "String"),
+        relFieldWithFK("author", "User", ["authorId"], ["id"]),
+      ]);
+      const out = renderModule(datamodel([post]), options({ relationColumns: true }));
+      expect(out).toContain("export const PostAuthorRelationSchema = Schema.Struct({");
+      expect(out).toContain("authorId: Schema.String,");
+    });
+
+    it("emits a comment for relations without local foreign keys", () => {
+      const user = model("User", [
+        field("id", "String", { isId: true }),
+        relField("posts", "Post", { isList: true }),
+      ]);
+      const out = renderModule(datamodel([user]), options({ relationColumns: true }));
+      expect(out).toContain("// User.posts: relation has no local foreign-key columns; skipping relation schema.");
+      expect(out).not.toContain("UserPostsRelationSchema");
+    });
+
+    it("handles composite foreign keys", () => {
+      const membership = model("Membership", [
+        field("id", "String", { isId: true }),
+        field("groupId", "String"),
+        field("memberId", "String"),
+        relFieldWithFK("group", "Group", ["groupId"], ["id"]),
+        relFieldWithFK("member", "User", ["memberId"], ["id"]),
+      ]);
+      const out = renderModule(
+        datamodel([membership]),
+        options({ relationColumns: true }),
+      );
+      expect(out).toContain("export const MembershipGroupRelationSchema = Schema.Struct({");
+      expect(out).toContain("groupId: Schema.String,");
+      expect(out).toContain("export const MembershipMemberRelationSchema = Schema.Struct({");
+      expect(out).toContain("memberId: Schema.String,");
+    });
+
+    it("uses Schema.Unknown for a missing foreign-key field", () => {
+      const post = model("Post", [
+        field("id", "String", { isId: true }),
+        relFieldWithFK("author", "User", ["missingFk"], ["id"]),
+      ]);
+      const out = renderModule(datamodel([post]), options({ relationColumns: true }));
+      expect(out).toContain("export const PostAuthorRelationSchema = Schema.Struct({");
+      expect(out).toContain("missingFk: Schema.Unknown,");
+    });
+
+    it("wraps relation schemas in standardSchemaV1 when both options are enabled", () => {
+      const post = model("Post", [
+        field("id", "String", { isId: true }),
+        field("authorId", "String"),
+        relFieldWithFK("author", "User", ["authorId"], ["id"]),
+      ]);
+      const out = renderModule(
+        datamodel([post]),
+        options({ relationColumns: true, standardSchemaV1: true }),
+      );
+      expect(out).toContain("export const PostAuthorRelationSchema = Schema.standardSchemaV1(Schema.Struct({");
+      expect(out).toContain("export const PostSchema = Schema.standardSchemaV1(Schema.Struct({");
+    });
+  });
+
+  describe("combined options", () => {
+    it("emits all maps when enabled together", () => {
+      const todo = model("Todo", [
+        field("id", "String", { isId: true }),
+        field("text", "String"),
+        field("deletedAt", "DateTime", { isRequired: false }),
+      ]);
+      const out = renderModule(
+        datamodel([todo]),
+        options({ idColumn: true, softDeleteColumn: true, tables: true }),
+      );
+      expect(out).toContain("PRIMARY_KEY_COLUMNS");
+      expect(out).toContain("SOFT_DELETE_COLUMNS");
+      expect(out).toContain("TABLES");
+      expect(out).toContain("ALL_MODEL_NAMES");
+      expect(out).toContain("ModelName");
+    });
+  });
 });

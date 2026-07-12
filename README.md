@@ -91,6 +91,9 @@ updated) on every regeneration.
 | `exportModelNameType` | `"true"`             | Emit `export type ModelName = "X" | "Y"`.                                                                          |
 | `standardSchemaV1`    | `"false"`            | Wrap every model/relation schema in `Schema.standardSchemaV1(...)` for Standard Schema compatibility.          |
 | `relationColumns`     | `"false"`            | Emit a separate `Schema.Struct` for each relation that has explicit local foreign-key columns.                   |
+| `idColumn`            | `"false"`            | Emit `PRIMARY_KEY_COLUMNS` map from model name to primary-key column (or `null`).                                |
+| `softDeleteColumn`    | `"false"`            | Emit `SOFT_DELETE_COLUMNS` map from model name to detected soft-delete column.                                   |
+| `tables`              | `"false"`            | Emit `TableDescriptor` / `ColumnDescriptor` interfaces and a `TABLES` map for runtime introspection.                 |
 
 ```prisma
 generator effect_client {
@@ -105,8 +108,78 @@ generator effect_client {
   exportModelNameType = "true"
   standardSchemaV1  = "false"
   relationColumns   = "false"
+  idColumn          = "false"
+  softDeleteColumn  = "false"
+  tables            = "false"
 }
 ```
+
+### Introspection helpers (`idColumn`, `softDeleteColumn`, `tables`)
+
+Enable these options when you need runtime metadata about your Prisma schema
+in addition to the per-model schemas.
+
+```prisma
+ generator effect_client {
+   provider         = "prisma-effect-schema-generator"
+   idColumn         = "true"
+   softDeleteColumn = "true"
+   tables           = "true"
+ }
+
+ model User {
+   id        String   @id
+   email     String
+   deletedAt DateTime?
+ }
+```
+
+```ts
+// generated/effect-schemas/index.ts
+export const PRIMARY_KEY_COLUMNS = {
+  User: "id",
+} as const satisfies Record<ModelName, string | null>
+
+export const SOFT_DELETE_COLUMNS = {
+  User: "deletedAt",
+} as const satisfies Partial<Record<ModelName, string>>
+
+export interface ColumnDescriptor {
+  readonly name: string
+  readonly type: 'string' | 'number' | 'boolean' | 'date' | 'json' | 'bytes' | 'unknown'
+  readonly required: boolean
+  readonly list: boolean
+  readonly unique: boolean
+  readonly isEnum: boolean
+  readonly enumValues?: ReadonlyArray<string>
+}
+
+export interface TableDescriptor {
+  readonly name: string
+  readonly primaryKey: string | null
+  readonly softDelete: string | null
+  readonly columns: ReadonlyArray<ColumnDescriptor>
+  readonly includedInSync: boolean
+}
+
+export const TABLES: { [M in ModelName]: TableDescriptor } = {
+  User: {
+    name: "User",
+    primaryKey: "id",
+    softDelete: "deletedAt",
+    columns: [
+      { name: "id"; type: 'string'; required: true; list: false; unique: true; isEnum: false },
+      { name: "email"; type: 'string'; required: true; list: false; unique: false; isEnum: false },
+      { name: "deletedAt"; type: 'date'; required: false; list: false; unique: false; isEnum: false },
+    ],
+    includedInSync: true,
+  },
+}
+```
+
+Primary keys are detected from `@id` first, then a single `String` or `Int`
+`@unique` column. Soft-delete columns are detected by name (`deletedAt`,
+`archivedAt`, `isDeleted`, `removedAt`) and type (`DateTime` or `Boolean`).
 
 ## Type mapping
 
@@ -226,6 +299,32 @@ npm run build      # tsc -> dist/
 npm test           # vitest
 npm run typecheck  # tsc --noEmit
 ```
+
+## Related projects
+
+### How is this different from `effect-prisma-generator`?
+
+This project is focused on **generating Effect Schema values** from your
+Prisma schema—standalone, serializable validators you can use anywhere
+(read-path validation, sync engines, RPC payloads, form validation, etc.).
+
+[`m9tdev/effect-prisma-generator`](https://github.com/m9tdev/effect-prisma-generator)
+takes the opposite approach: it generates an **Effect-native service wrapper
+around Prisma Client**, so every Prisma operation returns an `Effect` and
+plugs into Effect's `Layer` / `Context` system. It is great if you want to
+run Prisma through Effect's runtime.
+
+| | `prisma-effect-schema-generator` | `effect-prisma-generator` |
+|---|---|---|
+| Output | `Schema.Struct` values + introspection maps | `PrismaService` Effect service |
+| Needs Prisma Client at runtime | No | Yes |
+| Primary use case | Validate rows / introspect schema | Execute Prisma operations in Effect |
+| Relations | Optional `relationColumns` schemas | Full Prisma Client relation API |
+| Errors | Standard `Schema` decode errors | Typed `PrismaError` unions |
+
+If you need Effect-powered Prisma Client operations, use
+`effect-prisma-generator`. If you need portable Effect schemas and metadata
+from your schema, use this package.
 
 ## License
 

@@ -16,6 +16,9 @@ export const DEFAULTS = {
   exportModelNameType: true,
   standardSchemaV1: false,
   relationColumns: false,
+  idColumn: false,
+  softDeleteColumn: false,
+  tables: false,
 } as const satisfies ResolvedOptions;
 
 type RawConfig = Record<string, string | string[] | boolean | undefined>;
@@ -54,6 +57,9 @@ export function resolveOptions(raw: RawConfig | undefined | null): ResolvedOptio
     exportModelNameType: toBool(cfg.exportModelNameType, DEFAULTS.exportModelNameType),
     standardSchemaV1: toBool(cfg.standardSchemaV1, DEFAULTS.standardSchemaV1),
     relationColumns: toBool(cfg.relationColumns, DEFAULTS.relationColumns),
+    idColumn: toBool(cfg.idColumn, DEFAULTS.idColumn),
+    softDeleteColumn: toBool(cfg.softDeleteColumn, DEFAULTS.softDeleteColumn),
+    tables: toBool(cfg.tables, DEFAULTS.tables),
   };
 }
 

@@ -115,6 +115,9 @@ export function enumToSchema(
     exportModelNameType: true,
     standardSchemaV1: false,
     relationColumns: false,
+    idColumn: false,
+    softDeleteColumn: false,
+    tables: false,
   });
   const en = datamodel.enums.find((e) => e.name === enumName);
   if (!en || en.values.length === 0) {
@@ -143,4 +146,95 @@ export function isIncludeField(field: DMMFFieldLike): boolean {
  */
 export function sortModels(models: readonly DMMFModelLike[]): DMMFModelLike[] {
   return [...models].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// ---------------------------------------------------------------------------
+// Introspection helpers used by idColumn / softDeleteColumn / tables options.
+// ---------------------------------------------------------------------------
+
+/**
+ * Detect the primary-key column for a model.
+ *
+ * Preference order:
+ *   1. A field with `isId: true`.
+ *   2. A single field with `isUnique: true` and type `String` or `Int`.
+ *   3. `null` (composite keys are not supported in v1).
+ */
+export function findPrimaryKeyColumn(model: DMMFModelLike): string | null {
+  const idField = model.fields.find((f) => f.isId);
+  if (idField) return idField.name;
+
+  const uniqueScalarFields = model.fields.filter(
+    (f) =>
+      f.isUnique &&
+      !f.isList &&
+      (f.kind === "scalar" || f.kind === "enum") &&
+      (f.type === "String" || f.type === "Int"),
+  );
+  if (uniqueScalarFields.length === 1) return uniqueScalarFields[0]!.name;
+
+  return null;
+}
+
+const SOFT_DELETE_NAMES = new Set([
+  "deletedAt",
+  "archivedAt",
+  "isDeleted",
+  "removedAt",
+]);
+
+/**
+ * Detect the soft-delete column for a model.
+ *
+ * Matches fields named `deletedAt`, `archivedAt`, `isDeleted`, or
+ * `removedAt` with scalar type `DateTime` or `Boolean`.
+ */
+export function findSoftDeleteColumn(model: DMMFModelLike): string | null {
+  const field = model.fields.find((f) => {
+    if (!SOFT_DELETE_NAMES.has(f.name)) return false;
+    return (
+      (f.kind === "scalar" || f.kind === "enum") &&
+      (f.type === "DateTime" || f.type === "Boolean")
+    );
+  });
+  return field ? field.name : null;
+}
+
+/**
+ * Map a Prisma scalar/enum type to a runtime column-type string.
+ *
+ * Enums are reported as `"string"` with `isEnum: true`.
+ */
+export function prismaTypeToColumnType(type: string): "string" | "number" | "boolean" | "date" | "json" | "bytes" | "unknown" {
+  switch (type) {
+    case "String":
+      return "string";
+    case "Int":
+    case "Float":
+    case "BigInt":
+    case "Decimal":
+      return "number";
+    case "Boolean":
+      return "boolean";
+    case "DateTime":
+      return "date";
+    case "Json":
+      return "json";
+    case "Bytes":
+      return "bytes";
+    default:
+      return "unknown";
+  }
+}
+
+/**
+ * Resolve the enum values for a field, if it is an enum field.
+ */
+export function enumValuesForField(
+  field: DMMFFieldLike,
+  datamodel: DMMFDatamodelLike,
+): readonly string[] | undefined {
+  if (field.kind !== "enum") return undefined;
+  const en = datamodel.enums.find((e) => e.name === field.type);
+  return en?.values.map((v) => v.name);
 }

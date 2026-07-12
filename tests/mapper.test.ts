@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   enumToSchema,
+  enumValuesForField,
+  findPrimaryKeyColumn,
+  findSoftDeleteColumn,
   isIncludeField,
   prismaFieldToBaseSchema,
   prismaFieldToEffectSchema,
+  prismaTypeToColumnType,
   sortModels,
 } from "../src/mapper.js";
 import {
@@ -12,6 +16,7 @@ import {
   enumField,
   enumValues,
   field,
+  model,
   options,
   relField,
   unsupportedField,
@@ -263,6 +268,113 @@ describe("isIncludeField", () => {
 
   it("excludes relation (object) fields", () => {
     expect(isIncludeField(relField("posts", "Post"))).toBe(false);
+  });
+});
+
+describe("findPrimaryKeyColumn", () => {
+  it("returns the @id field", () => {
+    const m = model("X", [
+      field("id", "String", { isId: true }),
+      field("name", "String"),
+    ]);
+    expect(findPrimaryKeyColumn(m)).toBe("id");
+  });
+
+  it("falls back to a unique String field", () => {
+    const m = model("X", [
+      field("email", "String", { isUnique: true }),
+      field("name", "String"),
+    ]);
+    expect(findPrimaryKeyColumn(m)).toBe("email");
+  });
+
+  it("falls back to a unique Int field", () => {
+    const m = model("X", [
+      field("seq", "Int", { isUnique: true }),
+      field("name", "String"),
+    ]);
+    expect(findPrimaryKeyColumn(m)).toBe("seq");
+  });
+
+  it("returns null when no primary key is detectable", () => {
+    const m = model("X", [field("name", "String")]);
+    expect(findPrimaryKeyColumn(m)).toBe(null);
+  });
+
+  it("prefers @id over a unique field", () => {
+    const m = model("X", [
+      field("id", "String", { isId: true }),
+      field("email", "String", { isUnique: true }),
+    ]);
+    expect(findPrimaryKeyColumn(m)).toBe("id");
+  });
+});
+
+describe("findSoftDeleteColumn", () => {
+  it("detects deletedAt", () => {
+    const m = model("X", [
+      field("id", "String", { isId: true }),
+      field("deletedAt", "DateTime", { isRequired: false }),
+    ]);
+    expect(findSoftDeleteColumn(m)).toBe("deletedAt");
+  });
+
+  it("detects isDeleted as boolean", () => {
+    const m = model("X", [
+      field("id", "String", { isId: true }),
+      field("isDeleted", "Boolean"),
+    ]);
+    expect(findSoftDeleteColumn(m)).toBe("isDeleted");
+  });
+
+  it("detects archivedAt", () => {
+    const m = model("X", [field("archivedAt", "DateTime", { isRequired: false })]);
+    expect(findSoftDeleteColumn(m)).toBe("archivedAt");
+  });
+
+  it("returns null when there is no soft-delete column", () => {
+    const m = model("X", [field("id", "String", { isId: true }), field("name", "String")]);
+    expect(findSoftDeleteColumn(m)).toBe(null);
+  });
+
+  it("ignores a matching name with the wrong type", () => {
+    const m = model("X", [field("deletedAt", "String")]);
+    expect(findSoftDeleteColumn(m)).toBe(null);
+  });
+});
+
+describe("prismaTypeToColumnType", () => {
+  it.each([
+    ["String", "string"],
+    ["Int", "number"],
+    ["Float", "number"],
+    ["BigInt", "number"],
+    ["Decimal", "number"],
+    ["Boolean", "boolean"],
+    ["DateTime", "date"],
+    ["Json", "json"],
+    ["Bytes", "bytes"],
+    ["SomeFutureType", "unknown"],
+  ] as const)("maps %s to %s", (type, expected) => {
+    expect(prismaTypeToColumnType(type)).toBe(expected);
+  });
+});
+
+describe("enumValuesForField", () => {
+  it("returns enum values for an enum field", () => {
+    const d = datamodel([], [{ name: "Role", values: enumValues("ADMIN", "USER") }]);
+    const f = enumField("role", "Role");
+    expect(enumValuesForField(f, d)).toEqual(["ADMIN", "USER"]);
+  });
+
+  it("returns undefined for a scalar field", () => {
+    const f = field("name", "String");
+    expect(enumValuesForField(f, datamodel([]))).toBeUndefined();
+  });
+
+  it("returns undefined when the enum is missing", () => {
+    const f = enumField("role", "Missing");
+    expect(enumValuesForField(f, datamodel([]))).toBeUndefined();
   });
 });
 

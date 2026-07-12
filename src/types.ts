@@ -39,6 +39,21 @@ export interface GeneratorOptionsConfig {
    * foreign-key columns (`relationFromFields`). Default `false`.
    */
   readonly relationColumns?: boolean | string;
+  /**
+   * Emit `PRIMARY_KEY_COLUMNS` mapping each model to its primary-key column.
+   * Default `false`.
+   */
+  readonly idColumn?: boolean | string;
+  /**
+   * Emit `SOFT_DELETE_COLUMNS` mapping each model to its soft-delete column
+   * (if auto-detected). Default `false`.
+   */
+  readonly softDeleteColumn?: boolean | string;
+  /**
+   * Emit `TABLES` introspection map and `TableDescriptor` interface.
+   * Default `false`.
+   */
+  readonly tables?: boolean | string;
 }
 
 /**
@@ -54,6 +69,35 @@ export interface ResolvedOptions {
   readonly exportModelNameType: boolean;
   readonly standardSchemaV1: boolean;
   readonly relationColumns: boolean;
+  readonly idColumn: boolean;
+  readonly softDeleteColumn: boolean;
+  readonly tables: boolean;
+}
+
+/**
+ * Runtime descriptor for a model's table. Emitted when `tables = "true"`.
+ */
+export interface TableDescriptor {
+  /** SQL table name. Uses the model's `@@map` name when available. */
+  readonly name: string;
+  /** Primary-key column name, or `null` if none could be auto-detected. */
+  readonly primaryKey: string | null;
+  /** Soft-delete column name, or `null` if none was auto-detected. */
+  readonly softDelete: string | null;
+  /** Column descriptors for scalar and enum fields (relations are omitted). */
+  readonly columns: ReadonlyArray<ColumnDescriptor>;
+  /** Whether the table should participate in sync operations. */
+  readonly includedInSync: boolean;
+}
+
+export interface ColumnDescriptor {
+  readonly name: string;
+  readonly type: "string" | "number" | "boolean" | "date" | "json" | "bytes" | "unknown";
+  readonly required: boolean;
+  readonly list: boolean;
+  readonly unique: boolean;
+  readonly isEnum: boolean;
+  readonly enumValues?: readonly string[];
 }
 
 /**

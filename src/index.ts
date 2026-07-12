@@ -30,6 +30,10 @@ export {
   enumToSchema,
   isIncludeField,
   sortModels,
+  findPrimaryKeyColumn,
+  findSoftDeleteColumn,
+  prismaTypeToColumnType,
+  enumValuesForField,
 } from "./mapper.js";
 export { resolveOptions, DEFAULTS } from "./config.js";
 export { shouldQuoteName, renderKey } from "./render.js";
@@ -40,6 +44,8 @@ export type {
   DMMFModelLike,
   GeneratorOptionsConfig,
   ResolvedOptions,
+  TableDescriptor,
+  ColumnDescriptor,
 } from "./types.js";
 
 // Auto-register only when this file is the entry point (i.e. Prisma

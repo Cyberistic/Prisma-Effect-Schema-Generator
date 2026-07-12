@@ -1,6 +1,10 @@
 import {
+  enumValuesForField,
+  findPrimaryKeyColumn,
+  findSoftDeleteColumn,
   isIncludeField,
   prismaFieldToEffectSchema,
+  prismaTypeToColumnType,
   sortModels,
 } from "./mapper.js";
 import type {
@@ -194,6 +198,165 @@ function capitalize(s: string): string {
 }
 
 /**
+ * Render the `PRIMARY_KEY_COLUMNS` map when `idColumn` is enabled.
+ *
+ * The map is sorted by model name. Models with no detectable single-column
+ * primary key get `null`.
+ */
+function renderPrimaryKeyColumns(
+  models: readonly DMMFModelLike[],
+): string[] {
+  const lines: string[] = [];
+  const entries = sortModels(models).map((m) => {
+    const pk = findPrimaryKeyColumn(m);
+    return `  ${renderKey(m.name)}: ${pk === null ? "null" : JSON.stringify(pk)},`;
+  });
+  lines.push(
+    "export const PRIMARY_KEY_COLUMNS = {",
+    ...entries,
+    '} as const satisfies Record<ModelName, string | null>',
+    "",
+  );
+  return lines;
+}
+
+/**
+ * Render the `SOFT_DELETE_COLUMNS` map when `softDeleteColumn` is enabled.
+ *
+ * Only models with an auto-detected soft-delete column appear in the map.
+ */
+function renderSoftDeleteColumns(
+  models: readonly DMMFModelLike[],
+): string[] {
+  const lines: string[] = [];
+  const entries = sortModels(models)
+    .map((m) => {
+      const col = findSoftDeleteColumn(m);
+      return col === null
+        ? null
+        : `  ${renderKey(m.name)}: ${JSON.stringify(col)},`;
+    })
+    .filter((e): e is string => e !== null);
+
+  if (entries.length === 0) {
+    lines.push(
+      'export const SOFT_DELETE_COLUMNS = {} as const satisfies Partial<Record<ModelName, string>>',
+      "",
+    );
+    return lines;
+  }
+
+  lines.push(
+    "export const SOFT_DELETE_COLUMNS = {",
+    ...entries,
+    '} as const satisfies Partial<Record<ModelName, string>>',
+    "",
+  );
+  return lines;
+}
+
+/**
+ * Render the `TableDescriptor` interface and `TABLES` map when `tables`
+ * is enabled.
+ */
+function renderTables(
+  datamodel: DMMFDatamodelLike,
+): string[] {
+  const lines: string[] = [];
+
+  lines.push(
+    "export interface ColumnDescriptor {",
+    '  readonly name: string',
+    "  readonly type: 'string' | 'number' | 'boolean' | 'date' | 'json' | 'bytes' | 'unknown'",
+    '  readonly required: boolean',
+    '  readonly list: boolean',
+    '  readonly unique: boolean',
+    '  readonly isEnum: boolean',
+    '  readonly enumValues?: ReadonlyArray<string>',
+    '}',
+    '',
+    'export interface TableDescriptor {',
+    '  readonly name: string',
+    '  readonly primaryKey: string | null',
+    '  readonly softDelete: string | null',
+    '  readonly columns: ReadonlyArray<ColumnDescriptor>',
+    '  readonly includedInSync: boolean',
+    '}',
+    '',
+  );
+
+  const models = sortModels(datamodel.models);
+  const entries = models.map((m) => renderTableEntry(m, datamodel));
+
+  lines.push(
+    'export const TABLES: { [M in ModelName]: TableDescriptor } = {',
+    ...entries,
+    '}',
+    "",
+  );
+  return lines;
+}
+
+function renderTableEntry(
+  model: DMMFModelLike,
+  datamodel: DMMFDatamodelLike,
+): string {
+  const tableName = model.dbName ?? model.name;
+  const primaryKey = findPrimaryKeyColumn(model);
+  const softDelete = findSoftDeleteColumn(model);
+  const columns = model.fields
+    .filter(isIncludeField)
+    .map((f) => renderColumnDescriptor(f, datamodel));
+
+  const columnLines =
+    columns.length === 0
+      ? ['    columns: [],']
+      : ['    columns: [', ...columns.map((c) => `      ${c},`), '    ],'];
+
+  return [
+    `  ${renderKey(model.name)}: {`,
+    `    name: ${JSON.stringify(tableName)},`,
+    `    primaryKey: ${primaryKey === null ? "null" : JSON.stringify(primaryKey)},`,
+    `    softDelete: ${softDelete === null ? "null" : JSON.stringify(softDelete)},`,
+    ...columnLines,
+    '    includedInSync: true,',
+    '  },',
+  ].join("\n");
+}
+
+function renderColumnDescriptor(
+  field: DMMFFieldLike,
+  datamodel: DMMFDatamodelLike,
+): string {
+  const enumValues = enumValuesForField(field, datamodel);
+  const isEnum = field.kind === "enum";
+  const columnType = isEnum ? "string" : prismaTypeToColumnType(field.type);
+  const base = {
+    name: JSON.stringify(field.name),
+    type: `'${columnType}'`,
+    required: String(field.isRequired),
+    list: String(field.isList),
+    unique: String(field.isId || field.isUnique),
+    isEnum: String(isEnum),
+  };
+
+  const parts = [
+    `name: ${base.name}`,
+    `type: ${base.type}`,
+    `required: ${base.required}`,
+    `list: ${base.list}`,
+    `unique: ${base.unique}`,
+    `isEnum: ${base.isEnum}`,
+  ];
+
+  if (enumValues && enumValues.length > 0) {
+    parts.push(`enumValues: ${JSON.stringify([...enumValues])} as const`);
+  }
+
+  return `{ ${parts.join("; ")} }`;
+}
+
+/**
  * Render the helper exports at the bottom of the file:
  *
  *   export type ModelName = "Todo" | "Event";
@@ -265,6 +428,16 @@ export function renderModule(
   for (const m of models) {
     lines.push(renderModel(m, datamodel, options));
     lines.push(...renderRelationSchemas(m, datamodel, options));
+  }
+
+  if (options.idColumn) {
+    lines.push(...renderPrimaryKeyColumns(models));
+  }
+  if (options.softDeleteColumn) {
+    lines.push(...renderSoftDeleteColumns(models));
+  }
+  if (options.tables) {
+    lines.push(...renderTables(datamodel));
   }
 
   lines.push(...renderModelHelpers(models, options));

@@ -100,6 +100,51 @@ describe("resolveOptions", () => {
     });
   });
 
+  describe("standardSchemaV1", () => {
+    it("defaults to false", () => {
+      expect(resolveOptions({}).standardSchemaV1).toBe(false);
+    });
+    it("accepts 'true'", () => {
+      expect(resolveOptions({ standardSchemaV1: "true" }).standardSchemaV1).toBe(true);
+    });
+  });
+
+  describe("relationColumns", () => {
+    it("defaults to false", () => {
+      expect(resolveOptions({}).relationColumns).toBe(false);
+    });
+    it("accepts 'true'", () => {
+      expect(resolveOptions({ relationColumns: "true" }).relationColumns).toBe(true);
+    });
+  });
+
+  describe("idColumn", () => {
+    it("defaults to false", () => {
+      expect(resolveOptions({}).idColumn).toBe(false);
+    });
+    it("accepts 'true'", () => {
+      expect(resolveOptions({ idColumn: "true" }).idColumn).toBe(true);
+    });
+  });
+
+  describe("softDeleteColumn", () => {
+    it("defaults to false", () => {
+      expect(resolveOptions({}).softDeleteColumn).toBe(false);
+    });
+    it("accepts 'true'", () => {
+      expect(resolveOptions({ softDeleteColumn: "true" }).softDeleteColumn).toBe(true);
+    });
+  });
+
+  describe("tables", () => {
+    it("defaults to false", () => {
+      expect(resolveOptions({}).tables).toBe(false);
+    });
+    it("accepts 'true'", () => {
+      expect(resolveOptions({ tables: "true" }).tables).toBe(true);
+    });
+  });
+
   it("ignores unknown keys silently", () => {
     const opts = resolveOptions({
       totallyMadeUpOption: "whatever",
@@ -123,5 +168,10 @@ describe("DEFAULTS", () => {
     expect(DEFAULTS.dateAs).toBe("DateFromSelf");
     expect(DEFAULTS.exportModelNames).toBe(true);
     expect(DEFAULTS.exportModelNameType).toBe(true);
+    expect(DEFAULTS.standardSchemaV1).toBe(false);
+    expect(DEFAULTS.relationColumns).toBe(false);
+    expect(DEFAULTS.idColumn).toBe(false);
+    expect(DEFAULTS.softDeleteColumn).toBe(false);
+    expect(DEFAULTS.tables).toBe(false);
   });
 });
