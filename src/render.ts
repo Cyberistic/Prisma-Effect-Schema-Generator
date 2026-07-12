@@ -80,7 +80,11 @@ function localBinding(options: ResolvedOptions): string {
 function wrapSchema(expr: string, options: ResolvedOptions): string {
   if (!options.standardSchemaV1) return expr;
   const binding = localBinding(options);
-  return `${binding}.standardSchemaV1(${expr})`;
+  // Cast Context to `never` so the generated schemas are accepted by
+  // consumers whose schema slot is typed as `Schema<T, _, never>` (e.g.
+  // LiveStore's `State.SQLite.table`). The Standard Schema v1 brand is
+  // unaffected; runtime behavior is unchanged.
+  return `(${binding}.standardSchemaV1(${expr})) as unknown as ${binding}.Schema<unknown, unknown, never>`;
 }
 
 /**

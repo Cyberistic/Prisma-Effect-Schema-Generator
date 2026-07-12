@@ -248,21 +248,18 @@ generator effect_client {
 ```
 
 ```ts
-export const UserSchema = Schema.standardSchemaV1(Schema.Struct({
+export const UserSchema = (Schema.standardSchemaV1(Schema.Struct({
   id: Schema.String,
   email: Schema.String,
-}))
+}))) as unknown as Schema.Schema<unknown, unknown, never>
 
-// The wrapped schema still works as an Effect Schema...
-Schema.decodeUnknownSync(UserSchema)({ id: "u1", email: "a@b.c" })
+// The cast narrows the Effect Context to `never`, so the schema is
+// accepted directly by APIs that require `Schema<T, _, never>`:
+import { State } from "@livestore/livestore"
 
-// ...and is accepted directly by Standard Schema consumers without
-// casting Context to `never`:
-import { createCollection } from "@tanstack/db"
-
-const users = createCollection({
-  id: "users",
-  schema: UserSchema, // Context is `never`, no `as never` needed
+const users = State.SQLite.table({
+  name: "users",
+  schema: UserSchema, // no `as never` needed
 })
 ```
 

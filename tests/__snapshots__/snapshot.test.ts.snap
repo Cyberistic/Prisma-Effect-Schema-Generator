@@ -107,20 +107,20 @@ exports[`snapshot: full module output > renders with standardSchemaV1 and relati
 
 import { Schema } from "effect"
 
-export const PostSchema = Schema.standardSchemaV1(Schema.Struct({
+export const PostSchema = (Schema.standardSchemaV1(Schema.Struct({
   id: Schema.String,
   title: Schema.String,
   authorId: Schema.String,
-}))
+}))) as unknown as Schema.Schema<unknown, unknown, never>
 
-export const PostAuthorRelationSchema = Schema.standardSchemaV1(Schema.Struct({
+export const PostAuthorRelationSchema = (Schema.standardSchemaV1(Schema.Struct({
   authorId: Schema.String,
-}))
+}))) as unknown as Schema.Schema<unknown, unknown, never>
 
-export const UserSchema = Schema.standardSchemaV1(Schema.Struct({
+export const UserSchema = (Schema.standardSchemaV1(Schema.Struct({
   id: Schema.String,
   name: Schema.String,
-}))
+}))) as unknown as Schema.Schema<unknown, unknown, never>
 
 // User.posts: relation has no local foreign-key columns; skipping relation schema.
 export type ModelName =

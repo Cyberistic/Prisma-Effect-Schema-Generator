@@ -30,7 +30,10 @@ export interface GeneratorOptionsConfig {
    */
   readonly exportModelNameType?: boolean | string;
   /**
-   * Wrap every emitted model/relation schema in `Schema.standardSchemaV1(...)`.
+   * Wrap every emitted model/relation schema in `Schema.standardSchemaV1(...)`
+   * and cast the result so its Effect Context is `never`. This lets consumers
+   * whose schema slot is typed as `Schema<T, _, never>` (e.g. LiveStore,
+   * TanStack DB) accept the generated schemas directly.
    * Default `false`.
    */
   readonly standardSchemaV1?: boolean | string;
