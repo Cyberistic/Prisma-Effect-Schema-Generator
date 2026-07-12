@@ -3,7 +3,7 @@
 A standalone [Prisma](https://www.prisma.io) generator that emits
 [Effect Schema](https://effect.website/docs/schema) values for every
 model in your `schema.prisma`. Drop-in runtime validation for your
-database rows — perfect for sync engines, RPC layers, or anywhere you
+database rows, perfect for sync engines, RPC layers, or anywhere you
 need to assert that what you read from the DB actually matches what
 your code expects.
 
