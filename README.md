@@ -89,7 +89,7 @@ updated) on every regeneration.
 | `dateAs`              | `"DateFromSelf"`     | `"Date"` (ISO-string codec) or `"DateFromSelf"` (accepts native `Date`).                                          |
 | `exportModelNames`    | `"true"`             | Emit `export const ALL_MODEL_NAMES = [...] as const`.                                                             |
 | `exportModelNameType` | `"true"`             | Emit `export type ModelName = "X" | "Y"`.                                                                          |
-| `standardSchemaV1`    | `"false"`            | Wrap every model/relation schema in `Schema.standardSchemaV1(...)` for Standard Schema compatibility.          |
+| `standardSchemaV1`    | `"false"`            | Wrap schemas in `Schema.standardSchemaV1(...)`. Narrows `Context` to `never` so libraries like TanStack DB accept the schema directly. |
 | `relationColumns`     | `"false"`            | Emit a separate `Schema.Struct` for each relation that has explicit local foreign-key columns.                   |
 | `idColumn`            | `"false"`            | Emit `PRIMARY_KEY_COLUMNS` map from model name to primary-key column (or `null`).                                |
 | `softDeleteColumn`    | `"false"`            | Emit `SOFT_DELETE_COLUMNS` map from model name to detected soft-delete column.                                   |
@@ -168,9 +168,9 @@ export const TABLES: { [M in ModelName]: TableDescriptor } = {
     primaryKey: "id",
     softDelete: "deletedAt",
     columns: [
-      { name: "id"; type: 'string'; required: true; list: false; unique: true; isEnum: false },
-      { name: "email"; type: 'string'; required: true; list: false; unique: false; isEnum: false },
-      { name: "deletedAt"; type: 'date'; required: false; list: false; unique: false; isEnum: false },
+      { name: "id", type: 'string', required: true, list: false, unique: true, isEnum: false },
+      { name: "email", type: 'string', required: true, list: false, unique: false, isEnum: false },
+      { name: "deletedAt", type: 'date', required: false, list: false, unique: false, isEnum: false },
     ],
     includedInSync: true,
   },
@@ -249,9 +249,17 @@ export const UserSchema = Schema.standardSchemaV1(Schema.Struct({
   email: Schema.String,
 }))
 
-// Works with Standard Schema consumers:
-UserSchema["~standard"].validate({ id: "u1", email: "a@b.c" })
-// => { value: { id: "u1", email: "a@b.c" } }
+// The wrapped schema still works as an Effect Schema...
+Schema.decodeUnknownSync(UserSchema)({ id: "u1", email: "a@b.c" })
+
+// ...and is accepted directly by Standard Schema consumers without
+// casting Context to `never`:
+import { createCollection } from "@tanstack/db"
+
+const users = createCollection({
+  id: "users",
+  schema: UserSchema, // Context is `never`, no `as never` needed
+})
 ```
 
 ## Programmatic use
