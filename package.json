@@ -14,6 +14,15 @@
     "dmmf"
   ],
   "license": "MIT",
+  "author": "Cyberistic",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cyberistic/Prisma-Effect-Schema-Generator.git"
+  },
+  "homepage": "https://github.com/Cyberistic/Prisma-Effect-Schema-Generator#readme",
+  "bugs": {
+    "url": "https://github.com/Cyberistic/Prisma-Effect-Schema-Generator/issues"
+  },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",

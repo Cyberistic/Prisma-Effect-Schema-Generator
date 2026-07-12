@@ -1,11 +1,18 @@
 # prisma-effect-schema-generator
 
+[![npm version](https://img.shields.io/npm/v/prisma-effect-schema-generator.svg)](https://www.npmjs.com/package/prisma-effect-schema-generator)
+
 A standalone [Prisma](https://www.prisma.io) generator that emits
 [Effect Schema](https://effect.website/docs/schema) values for every
 model in your `schema.prisma`. Drop-in runtime validation for your
 database rows, perfect for sync engines, RPC layers, or anywhere you
 need to assert that what you read from the DB actually matches what
 your code expects.
+
+A real-world example: the generator powers the schemas in
+[`Cyberistic/livestore-tanstackdb`](https://github.com/Cyberistic/livestore-tanstackdb)
+where a single `schema.prisma` drives both the Prisma/D1 DDL and the
+LiveStore client-side validation.
 
 ```prisma
 generator effect_client {
@@ -53,6 +60,8 @@ const user = Schema.decodeUnknownSync(UserSchema)(rowFromDatabase)
 npm install --save-dev prisma-effect-schema-generator
 npm install effect         # the generator emits `Schema.X` from `effect`
 ```
+
+Published on npm as [`prisma-effect-schema-generator`](https://www.npmjs.com/package/prisma-effect-schema-generator).
 
 ## Configure
 
