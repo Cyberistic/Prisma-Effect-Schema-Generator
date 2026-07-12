@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * prisma-effect-schema-generator
  *
@@ -41,15 +42,20 @@ export type {
   ResolvedOptions,
 } from "./types.js";
 
-// Auto-register when imported as the generator entry point.
-// We guard with a feature-detection on `process` so importing the
-// module from tests / Node doesn't crash on environments that lack it.
-if (typeof process !== "undefined" && process.env.PRISMA_GENERATOR_AUTO_REGISTER !== "0") {
-  try {
-    register();
-  } catch {
-    // No-op: registering requires `@prisma/generator-helper`'s
-    // `generatorHandler`, which only works under Prisma's spawn. When
-    // imported from a test / a build script we skip registration.
-  }
+// Auto-register only when this file is the entry point (i.e. Prisma
+// spawned it as the generator binary). When the package is imported as
+// a library we must not start the generator RPC, because that would try
+// to read stdin and write stdout and interfere with the host process.
+//
+// `require.main === module` is the standard CommonJS signal for "run
+// directly". Our compiled output is CommonJS, so this works for the
+// `bin` entry point; it also safely does nothing under ESM/Bundler loads
+// because `require` is not defined there.
+if (
+  typeof process !== "undefined" &&
+  process.env.PRISMA_GENERATOR_AUTO_REGISTER !== "0" &&
+  typeof require !== "undefined" &&
+  require.main === module
+) {
+  register();
 }

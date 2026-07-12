@@ -6,21 +6,22 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { pathToFileURL } from "node:url";
 
 /**
- * End-to-end test: actually run `prisma generate` with our generator
- * wired into a real `schema.prisma`. This is the ultimate integration
- * check -- it confirms Prisma can:
+ * End-to-end tests: run `prisma generate` against a real `schema.prisma`
+ * with the generator wired in two different ways:
  *
- *   1. Resolve our package entry point.
- *   2. Invoke the generatorHandler we registered.
- *   3. Pass the DMMF.
- *   4. Receive a written file.
+ *   1. Explicit path: `provider = "node ./node_modules/.../dist/index.js"`
+ *   2. Package name: `provider = "prisma-effect-schema-generator"`
  *
- * If this test ever fails, the package is broken for real users.
+ * The package-name form is the one users copy from the README, and it
+ * requires the package to have a `bin` entry in `package.json`. This is
+ * the most common failure mode, so we test both.
  */
 
-const SCHEMA = `
+const DIRECT_PROVIDER = `node ${join(process.cwd(), "dist/index.js").replace(/\\/g, "/")}`;
+
+const SCHEMA_TEMPLATE = (provider: string) => `
 generator effect_client {
-  provider = "node ${join(process.cwd(), "dist/index.js").replace(/\\/g, "/")}"
+  provider = "${provider}"
   output   = "./generated/effect-schemas/index.ts"
 }
 
@@ -52,48 +53,84 @@ model Post {
 }
 `;
 
+function runPrisma(dir: string): void {
+  execFileSync("npx", ["prisma", "generate"], {
+    cwd: dir,
+    stdio: "pipe",
+    env: { ...process.env, npm_config_yes: "true" },
+  });
+}
+
+function assertOutput(dir: string): void {
+  const out = join(dir, "generated/effect-schemas/index.ts");
+  expect(existsSync(out)).toBe(true);
+  const content = readFileSync(out, "utf8");
+  expect(content).toContain("export const UserSchema = Schema.Struct({");
+  expect(content).toContain("export const PostSchema = Schema.Struct({");
+  expect(content).toContain('import { Schema } from "effect"');
+  expect(content).toContain('Schema.Literal("ADMIN")');
+  expect(content).toContain('Schema.Literal("GUEST")');
+  expect(content).toContain("ALL_MODEL_NAMES");
+  expect(content).toContain("ModelName");
+}
+
 describe("end-to-end: prisma generate", () => {
   let dir: string;
-
-  beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "prisma-effect-e2e-"));
-    writeFileSync(join(dir, "schema.prisma"), SCHEMA);
-    // Prisma 7 needs a package.json with `"type": "module"` for some
-    // features, but plain CommonJS works fine for `prisma generate`.
-    writeFileSync(
-      join(dir, "package.json"),
-      JSON.stringify({ name: "e2e", version: "0.0.0", private: true }),
-    );
-  });
 
   afterEach(() => {
     if (existsSync(dir)) rmSync(dir, { recursive: true, force: true });
   });
 
-  it("writes the generated schema file to the configured location", () => {
-    execFileSync("npx", ["prisma", "generate"], {
-      cwd: dir,
-      stdio: "pipe",
-      env: { ...process.env, npm_config_yes: "true" },
+  describe("provider = explicit node path", () => {
+    beforeEach(() => {
+      dir = mkdtempSync(join(tmpdir(), "prisma-effect-e2e-direct-"));
+      writeFileSync(join(dir, "schema.prisma"), SCHEMA_TEMPLATE(DIRECT_PROVIDER));
+      writeFileSync(
+        join(dir, "package.json"),
+        JSON.stringify({ name: "e2e-direct", version: "0.0.0", private: true }),
+      );
     });
-    const out = join(dir, "generated/effect-schemas/index.ts");
-    expect(existsSync(out)).toBe(true);
-    const content = readFileSync(out, "utf8");
-    expect(content).toContain("export const UserSchema = Schema.Struct({");
-    expect(content).toContain("export const PostSchema = Schema.Struct({");
-    expect(content).toContain('import { Schema } from "effect"');
-    expect(content).toContain('Schema.Literal("ADMIN")');
-    expect(content).toContain('Schema.Literal("GUEST")');
-    expect(content).toContain("ALL_MODEL_NAMES");
-    expect(content).toContain("ModelName");
+
+    it("writes the generated schema file", () => {
+      runPrisma(dir);
+      assertOutput(dir);
+    });
   });
 
-  it("the generated file actually imports & validates with effect", async () => {
-    execFileSync("npx", ["prisma", "generate"], {
-      cwd: dir,
-      stdio: "pipe",
-      env: { ...process.env, npm_config_yes: "true" },
+  describe("provider = package name", () => {
+    beforeEach(() => {
+      dir = mkdtempSync(join(tmpdir(), "prisma-effect-e2e-pkg-"));
+      writeFileSync(
+        join(dir, "schema.prisma"),
+        SCHEMA_TEMPLATE("prisma-effect-schema-generator"),
+      );
+      writeFileSync(
+        join(dir, "package.json"),
+        JSON.stringify({ name: "e2e-pkg", version: "0.0.0", private: true }),
+      );
+      // Make sure the consuming app has the package installed so the
+      // `provider` string resolves to a real `node_modules/.bin` entry.
+      execFileSync("npm", ["install", process.cwd(), "--no-save"], {
+        cwd: dir,
+        stdio: "pipe",
+      });
     });
+
+    it("writes the generated schema file", () => {
+      runPrisma(dir);
+      assertOutput(dir);
+    });
+  });
+
+  it("the generated file imports and validates with effect", async () => {
+    dir = mkdtempSync(join(tmpdir(), "prisma-effect-e2e-validate-"));
+    writeFileSync(join(dir, "schema.prisma"), SCHEMA_TEMPLATE(DIRECT_PROVIDER));
+    writeFileSync(
+      join(dir, "package.json"),
+      JSON.stringify({ name: "e2e-validate", version: "0.0.0", private: true }),
+    );
+    runPrisma(dir);
+
     const out = join(dir, "generated/effect-schemas/index.ts");
     const mod = (await import(pathToFileURL(out).href)) as Record<string, unknown>;
     const { Schema } = await import("effect");
@@ -109,7 +146,6 @@ describe("end-to-end: prisma generate", () => {
       id: "u1", email: "a@b.c", name: null, age: null, role: "ADMIN",
     });
 
-    // enum check
     let enumThrew = false;
     try {
       decode({ id: "u1", email: "a@b.c", name: null, age: null, role: "OWNER" });
@@ -118,7 +154,6 @@ describe("end-to-end: prisma generate", () => {
     }
     expect(enumThrew).toBe(true);
 
-    // tags is a Json field, so it accepts any shape
     const PostSchema = mod["PostSchema"];
     const decodePost = (Schema.decodeUnknownSync as unknown as (s: typeof PostSchema) => (a: unknown) => unknown)(PostSchema);
     const validPost = decodePost({

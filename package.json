@@ -1,6 +1,6 @@
 {
   "name": "prisma-effect-schema-generator",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Prisma generator that emits Effect Schema values for every model — drop-in validation for your database rows.",
   "keywords": [
     "prisma",
@@ -34,6 +34,9 @@
     },
     "./package.json": "./package.json"
   },
+  "bin": {
+    "prisma-effect-schema-generator": "dist/index.js"
+  },
   "files": [
     "dist",
     "README.md",
@@ -41,6 +44,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "postbuild": "chmod +x dist/index.js",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build && npm test",
     "test": "vitest run",
