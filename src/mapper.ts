@@ -201,6 +201,33 @@ export function findSoftDeleteColumn(model: DMMFModelLike): string | null {
 }
 
 /**
+ * Tables that look like audit / event / log tables are server-authoritative
+ * and shouldn't have client-side write APIs. Detect by table-name pattern:
+ *
+ *   - ends in "Event" / "Audit" / "Log"
+ *   - contains "_events" / "_logs" / "_audit"
+ *   - matches /^(Event|Audit|AuditLog|.*_?events?)$/i
+ *
+ * This is a heuristic — the same model could legitimately be writable
+ * (e.g. an `Event` table that's user-editable). Downstream tools (e.g.
+ * `@cyberistic/livestore-prisma`) are expected to expose an
+ * `includedInSync` override at the consumer level.
+ */
+const SERVER_AUTHORITATIVE_NAME_PATTERNS: readonly RegExp[] = [
+  /^(Event|Audit|AuditLog)$/i,
+  /_events?$/i,
+  /_audit(log)?$/i,
+  /_logs?$/i,
+  /(audit|event|log)log$/i,
+  /^(change|history|revision)/i,
+]
+
+export function isServerAuthoritativeTable(model: DMMFModelLike): boolean {
+  const name = model.dbName ?? model.name
+  return SERVER_AUTHORITATIVE_NAME_PATTERNS.some((re) => re.test(name))
+}
+
+/**
  * Map a Prisma scalar/enum type to a runtime column-type string.
  *
  * Enums are reported as `"string"` with `isEnum: true`.
