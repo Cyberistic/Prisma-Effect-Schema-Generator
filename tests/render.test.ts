@@ -357,8 +357,8 @@ describe("renderModule", () => {
         field("text", "String"),
       ]);
       const out = renderModule(datamodel([m]), options({ standardSchemaV1: true }));
-      expect(out).toContain("export const TodoSchema = (Schema.standardSchemaV1(Schema.Struct({");
-      expect(out).toContain("}))) as unknown as Schema.Schema<unknown, unknown, never>");
+      expect(out).toContain("export const TodoSchema = Schema.standardSchemaV1(Schema.Struct({");
+      expect(out).toContain("}))"); // closing of standardSchemaV1
     });
 
     it("works with a custom local binding name", () => {
@@ -367,8 +367,7 @@ describe("renderModule", () => {
         datamodel([m]),
         options({ standardSchemaV1: true, effectImportName: "S" }),
       );
-      expect(out).toContain("export const TodoSchema = (S.standardSchemaV1(S.Struct({");
-      expect(out).toContain("}))) as unknown as S.Schema<unknown, unknown, never>");
+      expect(out).toContain("export const TodoSchema = S.standardSchemaV1(S.Struct({");
     });
 
     it("does not wrap when disabled", () => {
@@ -440,9 +439,8 @@ describe("renderModule", () => {
         datamodel([post]),
         options({ relationColumns: true, standardSchemaV1: true }),
       );
-      expect(out).toContain("export const PostAuthorRelationSchema = (Schema.standardSchemaV1(Schema.Struct({");
-      expect(out).toContain("export const PostSchema = (Schema.standardSchemaV1(Schema.Struct({");
-      expect(out).toContain("}))) as unknown as Schema.Schema<unknown, unknown, never>");
+      expect(out).toContain("export const PostAuthorRelationSchema = Schema.standardSchemaV1(Schema.Struct({");
+      expect(out).toContain("export const PostSchema = Schema.standardSchemaV1(Schema.Struct({");
     });
   });
 
@@ -621,9 +619,8 @@ describe("renderModule", () => {
         datamodel([post]),
         options({ relationColumns: true, standardSchemaV1: true }),
       );
-      expect(out).toContain("export const PostAuthorRelationSchema = (Schema.standardSchemaV1(Schema.Struct({");
-      expect(out).toContain("export const PostSchema = (Schema.standardSchemaV1(Schema.Struct({");
-      expect(out).toContain("}))) as unknown as Schema.Schema<unknown, unknown, never>");
+      expect(out).toContain("export const PostAuthorRelationSchema = Schema.standardSchemaV1(Schema.Struct({");
+      expect(out).toContain("export const PostSchema = Schema.standardSchemaV1(Schema.Struct({");
     });
   });
 

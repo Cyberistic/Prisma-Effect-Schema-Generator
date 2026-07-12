@@ -89,7 +89,7 @@ updated) on every regeneration.
 | `dateAs`              | `"DateFromSelf"`     | `"Date"` (ISO-string codec) or `"DateFromSelf"` (accepts native `Date`).                                          |
 | `exportModelNames`    | `"true"`             | Emit `export const ALL_MODEL_NAMES = [...] as const`.                                                             |
 | `exportModelNameType` | `"true"`             | Emit `export type ModelName = "X" | "Y"`.                                                                          |
-| `standardSchemaV1`    | `"false"`            | Wrap schemas in `Schema.standardSchemaV1(...)`. Narrows `Context` to `never` so libraries like TanStack DB accept the schema directly. |
+| `standardSchemaV1`    | `"false"`            | Wrap schemas in `Schema.standardSchemaV1(...)`. Preserves the row type and `Context = never`, so Standard Schema consumers accept them directly. |
 | `relationColumns`     | `"false"`            | Emit a separate `Schema.Struct` for each relation that has explicit local foreign-key columns.                   |
 | `idColumn`            | `"false"`            | Emit `PRIMARY_KEY_COLUMNS` map from model name to primary-key column (or `null`).                                |
 | `softDeleteColumn`    | `"false"`            | Emit `SOFT_DELETE_COLUMNS` map from model name to detected soft-delete column.                                   |
@@ -248,18 +248,18 @@ generator effect_client {
 ```
 
 ```ts
-export const UserSchema = (Schema.standardSchemaV1(Schema.Struct({
+export const UserSchema = Schema.standardSchemaV1(Schema.Struct({
   id: Schema.String,
   email: Schema.String,
-}))) as unknown as Schema.Schema<unknown, unknown, never>
+}))
 
-// The cast narrows the Effect Context to `never`, so the schema is
-// accepted directly by APIs that require `Schema<T, _, never>`:
+// The wrapped schema preserves its row type and Context is already `never`,
+// so it works with both Effect APIs and Standard Schema consumers:
 import { State } from "@livestore/livestore"
 
 const users = State.SQLite.table({
   name: "users",
-  schema: UserSchema, // no `as never` needed
+  schema: UserSchema, // no cast needed
 })
 ```
 
