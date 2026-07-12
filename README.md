@@ -82,7 +82,7 @@ updated) on every regeneration.
 | Option                | Default              | Description                                                                                                       |
 |-----------------------|----------------------|-------------------------------------------------------------------------------------------------------------------|
 | `output`              | `./generated/effect-schemas/index.ts` | Where to write the generated module. Relative to the schema file's directory. |
-| `effectImport`        | `"effect"`           | Module specifier to import `Schema` from. Use `"@livestore/utils/effect"` if you live inside that ecosystem.       |
+| `effectImport`        | `"effect"`           | Module specifier to import `Schema` from.                                                                         |
 | `effectImportName`    | `"Schema"`           | Local binding name. Set to e.g. `"S"` to import as `Schema as S`.                                                 |
 | `bigIntAs`            | `"BigIntFromSelf"`   | `"BigInt"` (string-encoded) or `"BigIntFromSelf"` (accepts native bigint).                                        |
 | `decimalAs`           | `"String"`           | `"String"` (precision-safe) or `"Number"` (lossy but ergonomic).                                                  |
