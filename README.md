@@ -181,6 +181,10 @@ Primary keys are detected from `@id` first, then a single `String` or `Int`
 `@unique` column. Soft-delete columns are detected by name (`deletedAt`,
 `archivedAt`, `isDeleted`, `removedAt`) and type (`DateTime` or `Boolean`).
 
+`TableDescriptor.includedInSync` is currently `true` for every generated
+table. It is intended for downstream tooling to override per-table when
+building sync scopes.
+
 ## Type mapping
 
 | Prisma field       | Effect Schema (default)        | Encoded → Decoded                  |
