@@ -2,7 +2,6 @@ import {
   enumValuesForField,
   findPrimaryKeyColumn,
   findSoftDeleteColumn,
-  isServerAuthoritativeTable,
   isIncludeField,
   prismaFieldToEffectSchema,
   prismaTypeToColumnType,
@@ -305,7 +304,6 @@ function renderTableEntry(
   const tableName = model.dbName ?? model.name;
   const primaryKey = findPrimaryKeyColumn(model);
   const softDelete = findSoftDeleteColumn(model);
-  const includedInSync = !isServerAuthoritativeTable(model);
   const columns = model.fields
     .filter(isIncludeField)
     .map((f) => renderColumnDescriptor(f, datamodel));
@@ -321,7 +319,7 @@ function renderTableEntry(
     `    primaryKey: ${primaryKey === null ? "null" : JSON.stringify(primaryKey)},`,
     `    softDelete: ${softDelete === null ? "null" : JSON.stringify(softDelete)},`,
     ...columnLines,
-    `    includedInSync: ${String(includedInSync)},`,
+    '    includedInSync: true,',
     '  },',
   ].join("\n");
 }

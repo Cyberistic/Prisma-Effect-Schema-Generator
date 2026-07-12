@@ -531,25 +531,6 @@ describe("renderModule", () => {
       expect(out).toContain("{ name: \"deletedAt\", type: 'date', required: false, list: false, unique: false, isEnum: false }");
     });
 
-    it("marks Event/Audit/Log tables as server-authoritative (includedInSync: false)", () => {
-      const event = model("Event", [
-        field("id", "Int", { isId: true }),
-        field("storeId", "String"),
-        field("name", "String"),
-        field("args", "String"),
-      ]);
-      const todo = model("Todo", [
-        field("id", "String", { isId: true }),
-        field("text", "String"),
-      ]);
-      const out = renderModule(datamodel([event, todo]), options({ tables: true }));
-      // The Event model is detected as server-authoritative (audit-style)
-      // so its includedInSync is false.
-      expect(out).toMatch(/Event:\s*\{[\s\S]*?includedInSync: false/);
-      // Plain writable models stay true.
-      expect(out).toMatch(/Todo:\s*\{[\s\S]*?includedInSync: true/);
-    });
-
     it("uses dbName for the table name", () => {
       const todo = model("Todo", [field("id", "String", { isId: true })], {
         dbName: "todos",
