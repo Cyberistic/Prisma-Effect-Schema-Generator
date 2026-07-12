@@ -9,6 +9,7 @@ import {
   model,
   options,
   relField,
+  relFieldWithFK,
   unsupportedField,
 } from "./_fixtures.js";
 
@@ -347,5 +348,99 @@ describe("renderModule", () => {
     expect(out).toContain('role: Schema.Union(Schema.Literal("ADMIN"), Schema.Literal("USER"), Schema.Literal("GUEST"))');
     expect(out).toContain("metadata: Schema.NullOr(Schema.Unknown),");
     expect(out).toContain("publishedAt: Schema.NullOr(Schema.DateFromSelf),");
+  });
+
+  describe("standardSchemaV1", () => {
+    it("wraps model schemas in Schema.standardSchemaV1 when enabled", () => {
+      const m = model("Todo", [
+        field("id", "String", { isId: true }),
+        field("text", "String"),
+      ]);
+      const out = renderModule(datamodel([m]), options({ standardSchemaV1: true }));
+      expect(out).toContain("export const TodoSchema = Schema.standardSchemaV1(Schema.Struct({");
+      expect(out).toContain("}))"); // closing of standardSchemaV1
+    });
+
+    it("works with a custom local binding name", () => {
+      const m = model("Todo", [field("id", "String", { isId: true })]);
+      const out = renderModule(
+        datamodel([m]),
+        options({ standardSchemaV1: true, effectImportName: "S" }),
+      );
+      expect(out).toContain("export const TodoSchema = S.standardSchemaV1(S.Struct({");
+    });
+
+    it("does not wrap when disabled", () => {
+      const m = model("Todo", [field("id", "String", { isId: true })]);
+      const out = renderModule(datamodel([m]), defaultOptions());
+      expect(out).toContain("export const TodoSchema = Schema.Struct({");
+      expect(out).not.toContain("standardSchemaV1");
+    });
+  });
+
+  describe("relationColumns", () => {
+    it("emits a relation schema for explicit foreign keys", () => {
+      const post = model("Post", [
+        field("id", "String", { isId: true }),
+        field("title", "String"),
+        field("authorId", "String"),
+        relFieldWithFK("author", "User", ["authorId"], ["id"]),
+      ]);
+      const out = renderModule(datamodel([post]), options({ relationColumns: true }));
+      expect(out).toContain("export const PostAuthorRelationSchema = Schema.Struct({");
+      expect(out).toContain("authorId: Schema.String,");
+    });
+
+    it("emits a comment for relations without local foreign keys", () => {
+      const user = model("User", [
+        field("id", "String", { isId: true }),
+        relField("posts", "Post", { isList: true }),
+      ]);
+      const out = renderModule(datamodel([user]), options({ relationColumns: true }));
+      expect(out).toContain("// User.posts: relation has no local foreign-key columns; skipping relation schema.");
+      expect(out).not.toContain("UserPostsRelationSchema");
+    });
+
+    it("handles composite foreign keys", () => {
+      const membership = model("Membership", [
+        field("id", "String", { isId: true }),
+        field("groupId", "String"),
+        field("memberId", "String"),
+        relFieldWithFK("group", "Group", ["groupId"], ["id"]),
+        relFieldWithFK("member", "User", ["memberId"], ["id"]),
+      ]);
+      const out = renderModule(
+        datamodel([membership]),
+        options({ relationColumns: true }),
+      );
+      expect(out).toContain("export const MembershipGroupRelationSchema = Schema.Struct({");
+      expect(out).toContain("groupId: Schema.String,");
+      expect(out).toContain("export const MembershipMemberRelationSchema = Schema.Struct({");
+      expect(out).toContain("memberId: Schema.String,");
+    });
+
+    it("uses Schema.Unknown for a missing foreign-key field", () => {
+      const post = model("Post", [
+        field("id", "String", { isId: true }),
+        relFieldWithFK("author", "User", ["missingFk"], ["id"]),
+      ]);
+      const out = renderModule(datamodel([post]), options({ relationColumns: true }));
+      expect(out).toContain("export const PostAuthorRelationSchema = Schema.Struct({");
+      expect(out).toContain("missingFk: Schema.Unknown,");
+    });
+
+    it("wraps relation schemas in standardSchemaV1 when both options are enabled", () => {
+      const post = model("Post", [
+        field("id", "String", { isId: true }),
+        field("authorId", "String"),
+        relFieldWithFK("author", "User", ["authorId"], ["id"]),
+      ]);
+      const out = renderModule(
+        datamodel([post]),
+        options({ relationColumns: true, standardSchemaV1: true }),
+      );
+      expect(out).toContain("export const PostAuthorRelationSchema = Schema.standardSchemaV1(Schema.Struct({");
+      expect(out).toContain("export const PostSchema = Schema.standardSchemaV1(Schema.Struct({");
+    });
   });
 });

@@ -29,6 +29,16 @@ export interface GeneratorOptionsConfig {
    * Set to `"false"` to disable.
    */
   readonly exportModelNameType?: boolean | string;
+  /**
+   * Wrap every emitted model/relation schema in `Schema.standardSchemaV1(...)`.
+   * Default `false`.
+   */
+  readonly standardSchemaV1?: boolean | string;
+  /**
+   * Emit a separate `Schema.Struct` for each relation field that has local
+   * foreign-key columns (`relationFromFields`). Default `false`.
+   */
+  readonly relationColumns?: boolean | string;
 }
 
 /**
@@ -42,6 +52,8 @@ export interface ResolvedOptions {
   readonly dateAs: "Date" | "DateFromSelf";
   readonly exportModelNames: boolean;
   readonly exportModelNameType: boolean;
+  readonly standardSchemaV1: boolean;
+  readonly relationColumns: boolean;
 }
 
 /**
@@ -60,6 +72,16 @@ export interface DMMFFieldLike {
   readonly isId?: boolean;
   readonly hasDefaultValue?: boolean;
   readonly dbName?: string | null;
+  /**
+   * For relation fields: the local scalar fields that form the foreign key.
+   * E.g. `author User @relation(fields: [authorId], references: [id])`
+   * gives `relationFromFields: ["authorId"]`.
+   */
+  readonly relationFromFields?: readonly string[];
+  /**
+   * For relation fields: the target fields on the related model.
+   */
+  readonly relationToFields?: readonly string[];
 }
 
 export interface DMMFModelLike {

@@ -113,6 +113,8 @@ export function enumToSchema(
     dateAs: "DateFromSelf",
     exportModelNames: true,
     exportModelNameType: true,
+    standardSchemaV1: false,
+    relationColumns: false,
   });
   const en = datamodel.enums.find((e) => e.name === enumName);
   if (!en || en.values.length === 0) {

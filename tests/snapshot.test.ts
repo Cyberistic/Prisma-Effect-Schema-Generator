@@ -8,6 +8,7 @@ import {
   field,
   model,
   options,
+  relFieldWithFK,
 } from "./_fixtures.js";
 
 /**
@@ -96,6 +97,25 @@ describe("snapshot: full module output", () => {
       field("name", "String"),
     ]);
     const out = renderModule(datamodel([m]), defaultOptions());
+    expect(out).toMatchSnapshot();
+  });
+
+  it("renders with standardSchemaV1 and relationColumns enabled", () => {
+    const user = model("User", [
+      field("id", "String", { isId: true }),
+      field("name", "String"),
+      relFieldWithFK("posts", "Post", [], ["id"]),
+    ]);
+    const post = model("Post", [
+      field("id", "String", { isId: true }),
+      field("title", "String"),
+      field("authorId", "String"),
+      relFieldWithFK("author", "User", ["authorId"], ["id"]),
+    ]);
+    const out = renderModule(
+      datamodel([user, post]),
+      options({ standardSchemaV1: true, relationColumns: true }),
+    );
     expect(out).toMatchSnapshot();
   });
 });

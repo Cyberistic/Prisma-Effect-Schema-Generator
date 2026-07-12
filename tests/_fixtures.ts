@@ -53,6 +53,23 @@ export function relField(
   return field(name, type, { kind: "object", isList: false, ...opts });
 }
 
+/** Convenience: relation field with explicit foreign keys. */
+export function relFieldWithFK(
+  name: string,
+  type: string,
+  relationFromFields: readonly string[],
+  relationToFields: readonly string[] = ["id"],
+  opts: Partial<DMMFFieldLike> = {},
+): DMMFFieldLike {
+  return field(name, type, {
+    kind: "object",
+    isList: false,
+    relationFromFields,
+    relationToFields,
+    ...opts,
+  });
+}
+
 /** Convenience: unsupported field (e.g. Mongo `Unsupported`). */
 export function unsupportedField(
   name: string,

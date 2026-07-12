@@ -14,6 +14,8 @@ export const DEFAULTS = {
   dateAs: "DateFromSelf",
   exportModelNames: true,
   exportModelNameType: true,
+  standardSchemaV1: false,
+  relationColumns: false,
 } as const satisfies ResolvedOptions;
 
 type RawConfig = Record<string, string | string[] | boolean | undefined>;
@@ -50,6 +52,8 @@ export function resolveOptions(raw: RawConfig | undefined | null): ResolvedOptio
     dateAs: enumOr(cfg.dateAs, DEFAULTS.dateAs, ["Date", "DateFromSelf"]),
     exportModelNames: toBool(cfg.exportModelNames, DEFAULTS.exportModelNames),
     exportModelNameType: toBool(cfg.exportModelNameType, DEFAULTS.exportModelNameType),
+    standardSchemaV1: toBool(cfg.standardSchemaV1, DEFAULTS.standardSchemaV1),
+    relationColumns: toBool(cfg.relationColumns, DEFAULTS.relationColumns),
   };
 }
 

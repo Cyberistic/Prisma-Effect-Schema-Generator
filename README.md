@@ -89,6 +89,8 @@ updated) on every regeneration.
 | `dateAs`              | `"DateFromSelf"`     | `"Date"` (ISO-string codec) or `"DateFromSelf"` (accepts native `Date`).                                          |
 | `exportModelNames`    | `"true"`             | Emit `export const ALL_MODEL_NAMES = [...] as const`.                                                             |
 | `exportModelNameType` | `"true"`             | Emit `export type ModelName = "X" | "Y"`.                                                                          |
+| `standardSchemaV1`    | `"false"`            | Wrap every model/relation schema in `Schema.standardSchemaV1(...)` for Standard Schema compatibility.          |
+| `relationColumns`     | `"false"`            | Emit a separate `Schema.Struct` for each relation that has explicit local foreign-key columns.                   |
 
 ```prisma
 generator effect_client {
@@ -101,6 +103,8 @@ generator effect_client {
   dateAs              = "DateFromSelf"
   exportModelNames    = "true"
   exportModelNameType = "true"
+  standardSchemaV1  = "false"
+  relationColumns   = "false"
 }
 ```
 
@@ -127,10 +131,55 @@ Wrappers:
 | `field[]`       | `Schema.Array(...)`               |
 | `field[]?`      | `Schema.NullOr(Schema.Array(...))` |
 
-Relations (object-typed fields) are skipped — the model itself is the
-representation, so re-emitting it as a nested schema would be redundant.
-If you need to validate the related entity, just compose the related
-schema yourself.
+Relations (object-typed fields) are skipped from the model's own struct by
+default. If you need schemas for relation foreign keys, enable
+`relationColumns`:
+
+```prisma
+generator effect_client {
+  provider        = "prisma-effect-schema-generator"
+  relationColumns = "true"
+}
+
+model Post {
+  id       String @id
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+}
+```
+
+```ts
+// generated/effect-schemas/index.ts
+export const PostAuthorRelationSchema = Schema.Struct({
+  authorId: Schema.String,
+})
+```
+
+### Standard Schema v1
+
+Enable `standardSchemaV1` to have every emitted model/relation schema
+wrapped with `Schema.standardSchemaV1(...)`. The resulting values still
+work as Effect schemas, but they also expose the
+[Standard Schema](https://standardschema.dev/) `~standard` interface so
+libraries like TanStack DB can consume them directly.
+
+```prisma
+generator effect_client {
+  provider           = "prisma-effect-schema-generator"
+  standardSchemaV1 = "true"
+}
+```
+
+```ts
+export const UserSchema = Schema.standardSchemaV1(Schema.Struct({
+  id: Schema.String,
+  email: Schema.String,
+}))
+
+// Works with Standard Schema consumers:
+UserSchema["~standard"].validate({ id: "u1", email: "a@b.c" })
+// => { value: { id: "u1", email: "a@b.c" } }
+```
 
 ## Programmatic use
 

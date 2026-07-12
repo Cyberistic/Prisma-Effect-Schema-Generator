@@ -5,6 +5,7 @@ import {
 } from "./mapper.js";
 import type {
   DMMFDatamodelLike,
+  DMMFFieldLike,
   DMMFModelLike,
   ResolvedOptions,
 } from "./types.js";
@@ -69,10 +70,35 @@ function localBinding(options: ResolvedOptions): string {
 }
 
 /**
+ * Wrap a schema expression in `Schema.standardSchemaV1(...)` when the
+ * option is enabled, otherwise return it unchanged.
+ */
+function wrapSchema(expr: string, options: ResolvedOptions): string {
+  if (!options.standardSchemaV1) return expr;
+  const binding = localBinding(options);
+  return `${binding}.standardSchemaV1(${expr})`;
+}
+
+/**
+ * Render a single scalar/enum/unsupported field as a key/value pair
+ * suitable for a `Schema.Struct` literal.
+ */
+function renderStructField(
+  field: DMMFFieldLike,
+  datamodel: DMMFDatamodelLike,
+  options: ResolvedOptions,
+): string {
+  const { expr } = prismaFieldToEffectSchema(field, datamodel, options);
+  const key = renderKey(field.name);
+  return `  ${key}: ${expr},`;
+}
+
+/**
  * Render a single model as a `Schema.Struct({ ... })` expression.
  *
- * Relation fields (kind === "object") are skipped entirely. Scalar
- * fields are emitted in the order they appear in the DMMF.
+ * Relation fields (kind === "object") are skipped from the model's own
+ * struct. When `relationColumns` is enabled, those relations are emitted
+ * separately by {@link renderRelationSchemas}.
  */
 export function renderModel(
   model: DMMFModelLike,
@@ -80,28 +106,22 @@ export function renderModel(
   options: ResolvedOptions,
 ): string {
   const lines: string[] = [];
-  const binding = localBinding(options);
   const unsupportedComments: string[] = [];
 
-  lines.push(`export const ${model.name}Schema = ${binding}.Struct({`);
+  const structExpr = `${localBinding(options)}.Struct({\n${model.fields
+    .filter(isIncludeField)
+    .map((f) => renderStructField(f, datamodel, options))
+    .join("\n")}\n})`;
+  const wrapped = wrapSchema(structExpr, options);
+
+  lines.push(`export const ${model.name}Schema = ${wrapped}`);
 
   for (const field of model.fields) {
-    if (!isIncludeField(field)) continue;
-    const { expr, unsupported } = prismaFieldToEffectSchema(
-      field,
-      datamodel,
-      options,
+    if (!isIncludeField(field) || field.kind !== "unsupported") continue;
+    unsupportedComments.push(
+      `//   - ${field.name}: Prisma marks this field as "unsupported" -- typed as Schema.Unknown.`,
     );
-    const key = renderKey(field.name);
-    lines.push(`  ${key}: ${expr},`);
-    if (unsupported && field.kind === "unsupported") {
-      unsupportedComments.push(
-        `//   - ${field.name}: Prisma marks this field as "unsupported" -- typed as Schema.Unknown.`,
-      );
-    }
   }
-
-  lines.push("})");
 
   if (unsupportedComments.length > 0) {
     lines.unshift(`// WARNING: ${model.name} contains unsupported fields:`);
@@ -111,6 +131,66 @@ export function renderModel(
 
   lines.push("");
   return lines.join("\n");
+}
+
+/**
+ * Render relation schemas for a model.
+ *
+ * Only relations with explicit local foreign keys (`relationFromFields`)
+ * produce a schema. Others are skipped with a comment explaining why.
+ * Each schema is named `{ModelName}{RelationFieldName}RelationSchema`.
+ */
+export function renderRelationSchemas(
+  model: DMMFModelLike,
+  datamodel: DMMFDatamodelLike,
+  options: ResolvedOptions,
+): string[] {
+  if (!options.relationColumns) return [];
+
+  const lines: string[] = [];
+  const binding = localBinding(options);
+
+  for (const field of model.fields) {
+    if (field.kind !== "object") continue;
+
+    const fromFields = field.relationFromFields;
+    if (!fromFields || fromFields.length === 0) {
+      lines.push(
+        `// ${model.name}.${field.name}: relation has no local foreign-key columns; skipping relation schema.`,
+      );
+      continue;
+    }
+
+    const relationName = `${model.name}${capitalize(field.name)}RelationSchema`;
+    const fieldMap = new Map(model.fields.map((f) => [f.name, f]));
+
+    const relationFields = fromFields
+      .map((name) => {
+        const scalar = fieldMap.get(name);
+        if (!scalar) {
+          return {
+            name,
+            line: `  ${renderKey(name)}: ${binding}.Unknown,`,
+          };
+        }
+        return {
+          name,
+          line: renderStructField(scalar, datamodel, options),
+        };
+      });
+
+    const structExpr = `${binding}.Struct({\n${relationFields.map((f) => f.line).join("\n")}\n})`;
+    const wrapped = wrapSchema(structExpr, options);
+
+    lines.push(`export const ${relationName} = ${wrapped}`, "");
+  }
+
+  return lines;
+}
+
+function capitalize(s: string): string {
+  if (s.length === 0) return s;
+  return s[0]! .toUpperCase() + s.slice(1);
 }
 
 /**
@@ -184,6 +264,7 @@ export function renderModule(
   const models = sortModels(datamodel.models);
   for (const m of models) {
     lines.push(renderModel(m, datamodel, options));
+    lines.push(...renderRelationSchemas(m, datamodel, options));
   }
 
   lines.push(...renderModelHelpers(models, options));

@@ -349,6 +349,64 @@ describe("integration: round-trip through the effect runtime", () => {
     expectFail(XSchema, { class: 1 });
   });
 
+  it("supports standardSchemaV1 output with the Standard Schema validate API", async () => {
+    const m = model("User", [
+      field("id", "String", { isId: true }),
+      field("email", "String"),
+      field("age", "Int", { isRequired: false }),
+    ]);
+    runGenerator({
+      output: "./out.ts",
+      schemaDir: dir,
+      datamodel: datamodel([m]),
+      rawConfig: { standardSchemaV1: "true" },
+    });
+    const mod = await loadGenerated(join(dir, "out.ts"));
+    const UserSchema = mod["UserSchema"] as Schema.Schema<unknown> & {
+      readonly "~standard": {
+        version: number;
+        vendor: string;
+        validate: (input: unknown) => unknown;
+      };
+    };
+
+    expect(UserSchema["~standard"]).toBeDefined();
+    expect(UserSchema["~standard"].version).toBe(1);
+    expect(UserSchema["~standard"].vendor).toBe("effect");
+
+    const result = UserSchema["~standard"].validate({
+      id: "u1", email: "a@b.c", age: null,
+    });
+    expect(result).toEqual({ value: { id: "u1", email: "a@b.c", age: null } });
+  });
+
+  it("supports standardSchemaV1 with relationColumns together", async () => {
+    const post = model("Post", [
+      field("id", "String", { isId: true }),
+      field("title", "String"),
+      field("authorId", "String"),
+      { kind: "object", name: "author", type: "User", isRequired: true, isList: false, relationFromFields: ["authorId"], relationToFields: ["id"] } as never,
+    ]);
+    const user = model("User", [
+      field("id", "String", { isId: true }),
+      field("name", "String"),
+    ]);
+    runGenerator({
+      output: "./out.ts",
+      schemaDir: dir,
+      datamodel: datamodel([user, post]),
+      rawConfig: { standardSchemaV1: "true", relationColumns: "true" },
+    });
+    const mod = await loadGenerated(join(dir, "out.ts"));
+    const PostAuthorRelationSchema = mod["PostAuthorRelationSchema"] as Schema.Schema<unknown> & {
+      readonly "~standard": { version: number; validate: (input: unknown) => unknown };
+    };
+
+    expect(PostAuthorRelationSchema["~standard"].version).toBe(1);
+    const result = PostAuthorRelationSchema["~standard"].validate({ authorId: "u1" });
+    expect(result).toEqual({ value: { authorId: "u1" } });
+  });
+
   it("supports a custom effectImport", async () => {
     const m = model("X", [field("y", "String")]);
     runGenerator({
