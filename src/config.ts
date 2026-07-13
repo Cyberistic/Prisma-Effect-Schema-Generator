@@ -9,6 +9,7 @@ import type { ResolvedOptions } from "./types.js";
 export const DEFAULTS = {
   effectImport: "effect",
   effectImportName: "Schema",
+  effectVersion: "v3",
   bigIntAs: "BigIntFromSelf",
   decimalAs: "String",
   dateAs: "DateFromSelf",
@@ -50,6 +51,7 @@ export function resolveOptions(raw: RawConfig | undefined | null): ResolvedOptio
   return {
     effectImport: stringOr(cfg.effectImport, DEFAULTS.effectImport),
     effectImportName: stringOr(cfg.effectImportName, DEFAULTS.effectImportName),
+    effectVersion: enumOr(cfg.effectVersion, DEFAULTS.effectVersion, ["v3", "v4"]),
     bigIntAs: enumOr(cfg.bigIntAs, DEFAULTS.bigIntAs, ["BigInt", "BigIntFromSelf"]),
     decimalAs: enumOr(cfg.decimalAs, DEFAULTS.decimalAs, ["String", "Number"]),
     dateAs: enumOr(cfg.dateAs, DEFAULTS.dateAs, ["Date", "DateFromSelf"]),

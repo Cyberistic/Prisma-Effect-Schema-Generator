@@ -59,12 +59,18 @@ export function prismaFieldToBaseSchema(
     case "Float":
       return { expr: `${b}.Number`, unsupported: false };
     case "BigInt":
+      if (options.effectVersion === "v4") {
+        return { expr: options.bigIntAs === "BigInt" ? `${b}.BigIntFromString` : `${b}.BigInt`, unsupported: false };
+      }
       return { expr: `${b}.${options.bigIntAs}`, unsupported: false };
     case "Decimal":
       return { expr: `${b}.${options.decimalAs}`, unsupported: false };
     case "Boolean":
       return { expr: `${b}.Boolean`, unsupported: false };
     case "DateTime":
+      if (options.effectVersion === "v4") {
+        return { expr: `${b}.Date`, unsupported: false };
+      }
       return { expr: `${b}.${options.dateAs}`, unsupported: false };
     case "Json":
       return { expr: `${b}.Unknown`, unsupported: false };
@@ -108,6 +114,7 @@ export function enumToSchema(
   const b = localBinding(options ?? {
     effectImport: "effect",
     effectImportName: "Schema",
+    effectVersion: "v3",
     bigIntAs: "BigIntFromSelf",
     decimalAs: "String",
     dateAs: "DateFromSelf",
@@ -124,6 +131,9 @@ export function enumToSchema(
     return `${b}.Literal("UNKNOWN")`;
   }
   const literals = en.values.map((v) => `${b}.Literal(${JSON.stringify(v.name)})`);
+  if (options?.effectVersion === "v4") {
+    return `${b}.Literals([${literals.join(", ")}])`;
+  }
   if (literals.length === 1) return literals[0]!;
   return `${b}.Union(${literals.join(", ")})`;
 }

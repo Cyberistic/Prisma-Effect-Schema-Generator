@@ -13,6 +13,8 @@ export interface GeneratorOptionsConfig {
   readonly effectImport?: string;
   /** Local name to import `Schema` under. Defaults to `"Schema"`. */
   readonly effectImportName?: string;
+  /** Effect major version to target. Defaults to `"v3"`. */
+  readonly effectVersion?: "v3" | "v4";
   /** How `BigInt` Prisma fields map to Effect. Default `"BigIntFromSelf"`. */
   readonly bigIntAs?: "BigInt" | "BigIntFromSelf";
   /** How `Decimal` Prisma fields map to Effect. Default `"String"`. */
@@ -65,6 +67,7 @@ export interface GeneratorOptionsConfig {
 export interface ResolvedOptions {
   readonly effectImport: string;
   readonly effectImportName: string;
+  readonly effectVersion: "v3" | "v4";
   readonly bigIntAs: "BigInt" | "BigIntFromSelf";
   readonly decimalAs: "String" | "Number";
   readonly dateAs: "Date" | "DateFromSelf";
