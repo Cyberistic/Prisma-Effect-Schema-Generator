@@ -84,6 +84,7 @@ updated) on every regeneration.
 | `output`              | `./generated/effect-schemas/index.ts` | Where to write the generated module. Relative to the schema file's directory. |
 | `effectImport`        | `"effect"`           | Module specifier to import `Schema` from.                                                                         |
 | `effectImportName`    | `"Schema"`           | Local binding name. Set to e.g. `"S"` to import as `Schema as S`.                                                 |
+| `effectVersion`       | `"v3"`               | Target Effect major version. Set to `"v4"` to emit `toStandardSchemaV1`, `Schema.Date`, `Schema.Literals`, etc. See the [Effect v4 schema migration guide](https://github.com/Effect-TS/effect-smol/blob/main/migration/schema.md). |
 | `bigIntAs`            | `"BigIntFromSelf"`   | `"BigInt"` (string-encoded) or `"BigIntFromSelf"` (accepts native bigint).                                        |
 | `decimalAs`           | `"String"`           | `"String"` (precision-safe) or `"Number"` (lossy but ergonomic).                                                  |
 | `dateAs`              | `"DateFromSelf"`     | `"Date"` (ISO-string codec) or `"DateFromSelf"` (accepts native `Date`).                                          |
@@ -101,6 +102,7 @@ generator effect_client {
   output              = "./generated/effect-schemas/index.ts"
   effectImport        = "effect"
   effectImportName    = "Schema"
+  effectVersion       = "v3"
   bigIntAs            = "BigIntFromSelf"
   decimalAs           = "String"
   dateAs              = "DateFromSelf"
@@ -262,6 +264,33 @@ const users = State.SQLite.table({
   schema: UserSchema, // no cast needed
 })
 ```
+
+### Effect v4
+
+Set `effectVersion = "v4"` to emit schemas that use the Effect v4 API. The
+key differences from the default v3 output are:
+
+- `Schema.standardSchemaV1(...)` → `Schema.toStandardSchemaV1(...)`
+- `Schema.DateFromSelf` → `Schema.Date`
+- `Schema.Union(Schema.Literal("A"), Schema.Literal("B"))` → `Schema.Literals([Schema.Literal("A"), Schema.Literal("B")])`
+
+```prisma
+generator effect_client {
+  provider      = "prisma-effect-schema-generator"
+  effectVersion = "v4"
+}
+```
+
+```ts
+// generated/effect-schemas/index.ts
+export const UserSchema = Schema.toStandardSchemaV1(Schema.Struct({
+  id: Schema.String,
+  createdAt: Schema.Date,
+  role: Schema.Literals([Schema.Literal("ADMIN"), Schema.Literal("USER")]),
+}))
+```
+
+See the [Effect v4 schema migration guide](https://github.com/Effect-TS/effect-smol/blob/main/migration/schema.md) for the full API mapping.
 
 ## Programmatic use
 

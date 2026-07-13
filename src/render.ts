@@ -80,7 +80,8 @@ function localBinding(options: ResolvedOptions): string {
 function wrapSchema(expr: string, options: ResolvedOptions): string {
   if (!options.standardSchemaV1) return expr;
   const binding = localBinding(options);
-  return `${binding}.standardSchemaV1(${expr})`;
+  const fn = options.effectVersion === "v4" ? "toStandardSchemaV1" : "standardSchemaV1";
+  return `${binding}.${fn}(${expr})`;
 }
 
 /**
