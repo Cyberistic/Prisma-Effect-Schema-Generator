@@ -38,19 +38,19 @@ describe("mapper v4", () => {
     it("renders a single enum value as Schema.Literals in v4", () => {
       const d = datamodel([], [{ name: "Role", values: enumValues("ADMIN") }]);
       const out = enumToSchema("Role", d, v4());
-      expect(out).toBe('Schema.Literals([Schema.Literal("ADMIN")])');
+      expect(out).toBe('Schema.Literals(["ADMIN"])');
     });
 
     it("renders multiple enum values as Schema.Literals in v4", () => {
       const d = datamodel([], [{ name: "Role", values: enumValues("ADMIN", "USER") }]);
       const out = enumToSchema("Role", d, v4());
-      expect(out).toBe('Schema.Literals([Schema.Literal("ADMIN"), Schema.Literal("USER")])');
+      expect(out).toBe('Schema.Literals(["ADMIN", "USER"])');
     });
 
     it("uses the custom local binding", () => {
       const d = datamodel([], [{ name: "Role", values: enumValues("A", "B") }]);
       const out = enumToSchema("Role", d, v4({ effectImportName: "S" }));
-      expect(out).toBe('S.Literals([S.Literal("A"), S.Literal("B")])');
+      expect(out).toBe('S.Literals(["A", "B"])');
     });
   });
 });

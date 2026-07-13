@@ -132,7 +132,8 @@ export function enumToSchema(
   }
   const literals = en.values.map((v) => `${b}.Literal(${JSON.stringify(v.name)})`);
   if (options?.effectVersion === "v4") {
-    return `${b}.Literals([${literals.join(", ")}])`;
+    const values = en.values.map((v) => JSON.stringify(v.name)).join(", ");
+    return `${b}.Literals([${values}])`;
   }
   if (literals.length === 1) return literals[0]!;
   return `${b}.Union(${literals.join(", ")})`;

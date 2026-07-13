@@ -286,7 +286,7 @@ generator effect_client {
 export const UserSchema = Schema.toStandardSchemaV1(Schema.Struct({
   id: Schema.String,
   createdAt: Schema.Date,
-  role: Schema.Literals([Schema.Literal("ADMIN"), Schema.Literal("USER")]),
+  role: Schema.Literals(["ADMIN", "USER"]),
 }))
 ```
 

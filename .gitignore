@@ -8,3 +8,4 @@ coverage/
 .env
 .env.local
 references/
+tests/v4-fixture/generated/
