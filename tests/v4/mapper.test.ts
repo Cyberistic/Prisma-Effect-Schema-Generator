@@ -6,18 +6,9 @@ const v4 = (raw: Record<string, unknown> = {}) => options({ effectVersion: "v4",
 
 describe("mapper v4", () => {
   describe("prismaFieldToBaseSchema", () => {
-    it("maps DateTime to Schema.Date in v4", () => {
-      const out = prismaFieldToBaseSchema(field("x", "DateTime"), datamodel([]), v4());
-      expect(out.expr).toBe("Schema.Date");
-    });
-
-    it("ignores dateAs in v4 and always emits Schema.Date", () => {
-      const out = prismaFieldToBaseSchema(
-        field("x", "DateTime"),
-        datamodel([]),
-        v4({ dateAs: "Date" }),
-      );
-      expect(out.expr).toBe("Schema.Date");
+    it("maps DateTime based on dateAs in v4", () => {
+      expect(prismaFieldToBaseSchema(field("x", "DateTime"), datamodel([]), v4({ dateAs: "DateFromSelf" })).expr).toBe("Schema.Date");
+      expect(prismaFieldToBaseSchema(field("x", "DateTime"), datamodel([]), v4({ dateAs: "Date" })).expr).toBe("Schema.DateFromString");
     });
 
     it("maps BigInt based on bigIntAs in v4", () => {

@@ -28,13 +28,22 @@ describe("render v4", () => {
     expect(out).toContain("createdAt: Schema.Date,");
   });
 
-  it("emits Schema.Date for optional DateTime fields", () => {
+  it("emits Schema.Date for optional DateTime fields with dateAs = DateFromSelf", () => {
     const m = model("Todo", [
       field("id", "String", { isId: true }),
       field("publishedAt", "DateTime", { isRequired: false }),
     ]);
-    const out = renderModule(datamodel([m]), v4());
+    const out = renderModule(datamodel([m]), v4({ dateAs: "DateFromSelf" }));
     expect(out).toContain("publishedAt: Schema.NullOr(Schema.Date),");
+  });
+
+  it("emits Schema.DateFromString for optional DateTime fields with dateAs = Date", () => {
+    const m = model("Todo", [
+      field("id", "String", { isId: true }),
+      field("publishedAt", "DateTime", { isRequired: false }),
+    ]);
+    const out = renderModule(datamodel([m]), v4({ dateAs: "Date" }));
+    expect(out).toContain("publishedAt: Schema.NullOr(Schema.DateFromString),");
   });
 
   it("emits Schema.Date for list DateTime fields", () => {

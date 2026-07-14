@@ -69,7 +69,7 @@ export function prismaFieldToBaseSchema(
       return { expr: `${b}.Boolean`, unsupported: false };
     case "DateTime":
       if (options.effectVersion === "v4") {
-        return { expr: `${b}.Date`, unsupported: false };
+        return { expr: options.dateAs === "Date" ? `${b}.DateFromString` : `${b}.Date`, unsupported: false };
       }
       return { expr: `${b}.${options.dateAs}`, unsupported: false };
     case "Json":
