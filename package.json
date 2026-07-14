@@ -1,6 +1,6 @@
 {
   "name": "prisma-effect-schema-generator",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Prisma generator that emits Effect Schema values, relation schemas, and runtime introspection maps (primary keys, soft-delete columns, table descriptors) for every model — drop-in validation for your database rows.",
   "keywords": [
     "prisma",
