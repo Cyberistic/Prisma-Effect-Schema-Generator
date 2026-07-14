@@ -87,7 +87,7 @@ updated) on every regeneration.
 | `effectVersion`       | `"v3"`               | Target Effect major version. Set to `"v4"` to emit `toStandardSchemaV1`, `Schema.Date`, `Schema.Literals`, etc. See the [Effect v4 schema migration guide](https://github.com/Effect-TS/effect-smol/blob/main/migration/schema.md). |
 | `bigIntAs`            | `"BigIntFromSelf"`   | `"BigInt"` (string-encoded) or `"BigIntFromSelf"` (accepts native bigint).                                        |
 | `decimalAs`           | `"String"`           | `"String"` (precision-safe) or `"Number"` (lossy but ergonomic).                                                  |
-| `dateAs`              | `"DateFromSelf"`     | `"Date"` (ISO-string codec) or `"DateFromSelf"` (accepts native `Date`). In v4 these map to `Schema.DateFromString` and `Schema.Date` respectively. |
+| `dateAs`              | `"DateFromSelf"`     | `"Date"` (ISO-string codec), `"DateFromSelf"` (accepts native `Date`), or `"DateFromMillis"` (v4-only epoch-ms codec — `Schema.DateFromMillis`). In v4: `"Date"` → `Schema.DateFromString`, `"DateFromSelf"` → `Schema.Date`, `"DateFromMillis"` → `Schema.DateFromMillis`. |
 | `exportModelNames`    | `"true"`             | Emit `export const ALL_MODEL_NAMES = [...] as const`.                                                             |
 | `exportModelNameType` | `"true"`             | Emit `export type ModelName = "X" | "Y"`.                                                                          |
 | `standardSchemaV1`    | `"false"`            | Wrap schemas in `Schema.standardSchemaV1(...)`. Preserves the row type and `Context = never`, so Standard Schema consumers accept them directly. |
@@ -273,6 +273,7 @@ key differences from the default v3 output are:
 - `Schema.standardSchemaV1(...)` → `Schema.toStandardSchemaV1(...)`
 - `Schema.DateFromSelf` → `Schema.Date` (default `dateAs = "DateFromSelf"`)
 - `Schema.Date` (ISO-string codec) → `Schema.DateFromString` (when `dateAs = "Date"`)
+- (v4-only) `dateAs = "DateFromMillis"` → `Schema.DateFromMillis` for epoch-ms wire formats (e.g. LiveStore `INTEGER` columns). Falls back to `Schema.Date` under v3.
 - `Schema.Union(Schema.Literal("A"), Schema.Literal("B"))` → `Schema.Literals(["A", "B"])`
 
 ```prisma

@@ -54,7 +54,7 @@ export function resolveOptions(raw: RawConfig | undefined | null): ResolvedOptio
     effectVersion: enumOr(cfg.effectVersion, DEFAULTS.effectVersion, ["v3", "v4"]),
     bigIntAs: enumOr(cfg.bigIntAs, DEFAULTS.bigIntAs, ["BigInt", "BigIntFromSelf"]),
     decimalAs: enumOr(cfg.decimalAs, DEFAULTS.decimalAs, ["String", "Number"]),
-    dateAs: enumOr(cfg.dateAs, DEFAULTS.dateAs, ["Date", "DateFromSelf"]),
+    dateAs: enumOr(cfg.dateAs, DEFAULTS.dateAs, ["Date", "DateFromSelf", "DateFromMillis"]),
     exportModelNames: toBool(cfg.exportModelNames, DEFAULTS.exportModelNames),
     exportModelNameType: toBool(cfg.exportModelNameType, DEFAULTS.exportModelNameType),
     standardSchemaV1: toBool(cfg.standardSchemaV1, DEFAULTS.standardSchemaV1),

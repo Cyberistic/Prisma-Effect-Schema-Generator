@@ -19,8 +19,18 @@ export interface GeneratorOptionsConfig {
   readonly bigIntAs?: "BigInt" | "BigIntFromSelf";
   /** How `Decimal` Prisma fields map to Effect. Default `"String"`. */
   readonly decimalAs?: "String" | "Number";
-  /** How `DateTime` Prisma fields map to Effect. Default `"Date"`. */
-  readonly dateAs?: "Date" | "DateFromSelf";
+  /**
+   * How `DateTime` Prisma fields map to Effect. Default `"DateFromSelf"`.
+   *
+   * - `"DateFromSelf"` — strict `Date` instance codec (Effect 3 + v4 same name).
+   * - `"Date"` — in v4, maps to `Schema.DateFromString` (ISO string codec);
+   *   in v3, maps to `Schema.Date` (string codec). Use when the wire format
+   *   is an ISO-8601 string (e.g. a LiveStore TEXT column).
+   * - `"DateFromMillis"` — v4-only. `Schema.DateFromMillis` decodes
+   *   epoch-milliseconds numbers (e.g. a LiveStore INTEGER column) into
+   *   `Date` instances. Use when the wire format is a number.
+   */
+  readonly dateAs?: "Date" | "DateFromSelf" | "DateFromMillis";
   /**
    * Emit `ALL_MODEL_NAMES` and `ModelName` helpers. Default `true`.
    * Set to `"false"` to disable.
@@ -70,7 +80,7 @@ export interface ResolvedOptions {
   readonly effectVersion: "v3" | "v4";
   readonly bigIntAs: "BigInt" | "BigIntFromSelf";
   readonly decimalAs: "String" | "Number";
-  readonly dateAs: "Date" | "DateFromSelf";
+  readonly dateAs: "Date" | "DateFromSelf" | "DateFromMillis";
   readonly exportModelNames: boolean;
   readonly exportModelNameType: boolean;
   readonly standardSchemaV1: boolean;

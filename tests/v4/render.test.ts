@@ -46,6 +46,17 @@ describe("render v4", () => {
     expect(out).toContain("publishedAt: Schema.NullOr(Schema.DateFromString),");
   });
 
+  it("emits Schema.DateFromMillis for DateTime fields with dateAs = DateFromMillis", () => {
+    const m = model("Todo", [
+      field("id", "String", { isId: true }),
+      field("createdAt", "DateTime"),
+      field("publishedAt", "DateTime", { isRequired: false }),
+    ]);
+    const out = renderModule(datamodel([m]), v4({ dateAs: "DateFromMillis" }));
+    expect(out).toContain("createdAt: Schema.DateFromMillis,");
+    expect(out).toContain("publishedAt: Schema.NullOr(Schema.DateFromMillis),");
+  });
+
   it("emits Schema.Date for list DateTime fields", () => {
     const m = model("Todo", [
       field("id", "String", { isId: true }),

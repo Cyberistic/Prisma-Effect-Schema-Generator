@@ -69,7 +69,23 @@ export function prismaFieldToBaseSchema(
       return { expr: `${b}.Boolean`, unsupported: false };
     case "DateTime":
       if (options.effectVersion === "v4") {
-        return { expr: options.dateAs === "Date" ? `${b}.DateFromString` : `${b}.Date`, unsupported: false };
+        // v4 mapping:
+        //   "Date"           → Schema.DateFromString  (ISO-string codec)
+        //   "DateFromSelf"   → Schema.Date            (strict Date instance)
+        //   "DateFromMillis" → Schema.DateFromMillis  (epoch-ms codec)
+        const dateAs = options.dateAs;
+        if (dateAs === "Date") {
+          return { expr: `${b}.DateFromString`, unsupported: false };
+        }
+        if (dateAs === "DateFromMillis") {
+          return { expr: `${b}.DateFromMillis`, unsupported: false };
+        }
+        return { expr: `${b}.Date`, unsupported: false };
+      }
+      // v3 only had two options; `DateFromMillis` has no v3 equivalent
+      // and falls back to the strict Date codec if the user requests it.
+      if (options.dateAs === "DateFromMillis") {
+        return { expr: `${b}.Date`, unsupported: false };
       }
       return { expr: `${b}.${options.dateAs}`, unsupported: false };
     case "Json":
